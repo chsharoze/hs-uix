@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Fuse from "fuse.js";
+import {
+  getEmptyFilterValue,
+  isFilterActive,
+  formatDateChip,
+  toStableKey,
+  filterRows,
+  searchRows,
+} from "../../../src/utils/query.js";
+import { useDebouncedDispatch, useSelectionReset } from "../../../src/utils/interactionHooks.js";
 import { makeStyledTextDataUri } from "../../../src/common-components/StyledText.js";
 import {
   Alert,
@@ -129,45 +137,10 @@ const makeRotatedLabelDataUri = (label) =>
   });
 
 // ---------------------------------------------------------------------------
-// Filter helpers — ported from DataTable. These let the toolbar support three
-// filter control types (Select / MultiSelect / DateRange) with per-type empty
-// values, activeness checks, and human-readable chip labels.
+// Filter helpers (getEmptyFilterValue / isFilterActive / formatDateChip /
+// toStableKey) and the filter/search pipeline are shared with DataTable via
+// src/utils/query.js (imported above).
 // ---------------------------------------------------------------------------
-
-const getEmptyFilterValue = (filter) => {
-  const type = filter.type || "select";
-  if (type === "multiselect") return [];
-  if (type === "dateRange") return { from: null, to: null };
-  return "";
-};
-
-const isFilterActive = (filter, value) => {
-  const type = filter.type || "select";
-  if (type === "multiselect") return Array.isArray(value) && value.length > 0;
-  if (type === "dateRange") return value && (value.from || value.to);
-  return !!value;
-};
-
-const formatDateChip = (dateObj) => {
-  if (!dateObj) return "";
-  const { year, month, date } = dateObj;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  }).format(new Date(year, month, date));
-};
-
-const dateToTimestamp = (dateObj) => {
-  if (!dateObj) return null;
-  return new Date(dateObj.year, dateObj.month, dateObj.date).getTime();
-};
-
-const toStableKey = (value) => {
-  try {
-    return JSON.stringify(value);
-  } catch (_error) {
-    return String(value);
-  }
-};
 
 const canStageReceiveRow = (stage, row, canMove) => {
   if (!stage) return false;
@@ -561,7 +534,7 @@ const KanbanColumn = ({
     countDisplay === "text" ? (
       <Text format={{ fontWeight: "demibold" }}>{countLabel}</Text>
     ) : countDisplay === "none" ? null : (
-      <Tag variant="subtle">{countLabel}</Tag>
+      <Tag variant="default">{countLabel}</Tag>
     );
 
   if (collapsed) {
@@ -1174,7 +1147,6 @@ export const Kanban = ({
   const [internalSelection, setInternalSelection] = useState([]);
   const [internalShowMetrics, setInternalShowMetrics] = useState(false);
   const [transitionPrompts, setTransitionPrompts] = useState({});
-  const selectionResetRef = useRef("");
 
   const resolvedShowMetrics =
     controlledShowMetrics != null ? controlledShowMetrics : internalShowMetrics;
@@ -1188,6 +1160,7 @@ export const Kanban = ({
   const effectiveColumnWidth = Math.max(MIN_COLUMN_WIDTH, columnWidth || DEFAULT_COLUMN_WIDTH);
 
   const resolvedSearch = searchValue != null ? searchValue : internalSearch;
+  const searchInputValue = searchDebounce > 0 ? internalSearch : resolvedSearch;
   const resolvedFilters = filterValues != null ? filterValues : internalFilters;
   const resolvedSort = sort != null ? sort : internalSort;
   const resolvedCollapsed = collapsedStages != null ? collapsedStages : internalCollapsed;
@@ -1214,24 +1187,32 @@ export const Kanban = ({
   }, [onParamsChange, resolvedCollapsed, resolvedFilters, resolvedSearch, resolvedSort]);
 
   // --- Search debounce ---
-  const debounceRef = useRef(null);
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+  const lastAppliedSearchRef = useRef(searchValue != null ? searchValue : "");
+
+  useEffect(() => {
+    if (searchValue == null) return;
+    if (searchValue === lastAppliedSearchRef.current) return;
+    lastAppliedSearchRef.current = searchValue;
+    setInternalSearch(searchValue);
+  }, [searchValue]);
+
+  const dispatchSearch = useCallback(
+    (val) => {
+      lastAppliedSearchRef.current = val;
+      if (onSearchChange) onSearchChange(val);
+      fireParamsChange({ search: val });
+    },
+    [fireParamsChange, onSearchChange]
+  );
+
+  const dispatchSearchDebounced = useDebouncedDispatch(internalSearch, searchDebounce, dispatchSearch);
 
   const handleSearch = useCallback(
     (val) => {
-      if (searchValue == null) setInternalSearch(val);
-      const dispatch = () => {
-        if (onSearchChange) onSearchChange(val);
-        fireParamsChange({ search: val });
-      };
-      if (searchDebounce > 0) {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(dispatch, searchDebounce);
-      } else {
-        dispatch();
-      }
+      setInternalSearch(val);
+      dispatchSearchDebounced(val);
     },
-    [fireParamsChange, onSearchChange, searchValue, searchDebounce]
+    [dispatchSearchDebounced]
   );
 
   const handleFilter = useCallback(
@@ -1338,16 +1319,13 @@ export const Kanban = ({
     [selectionQueryKey, selectionResetKey]
   );
 
-  useEffect(() => {
-    if (!selectable || selectedIds != null) {
-      selectionResetRef.current = combinedSelectionResetKey;
-      return;
-    }
-    if (selectionResetRef.current && selectionResetRef.current !== combinedSelectionResetKey) {
-      setInternalSelection([]);
-    }
-    selectionResetRef.current = combinedSelectionResetKey;
-  }, [combinedSelectionResetKey, selectable, selectedIds]);
+  const clearSelection = useCallback(() => setInternalSelection([]), []);
+  useSelectionReset({
+    resetKey: combinedSelectionResetKey,
+    enabled: selectable,
+    isControlled: selectedIds != null,
+    clearSelection,
+  });
 
   // --- Data pipeline ---
   const getStageFor = useCallback(
@@ -1360,50 +1338,14 @@ export const Kanban = ({
 
   // Filter → apply search → bucket → sort → clamp
   const filteredData = useMemo(() => {
-    let result = data;
-
-    for (const filter of filters || []) {
-      const val = resolvedFilters[filter.name];
-      if (!isFilterActive(filter, val)) continue;
-
-      const type = filter.type || "select";
-      if (filter.filterFn) {
-        result = result.filter((row) => filter.filterFn(row, val));
-      } else if (type === "multiselect") {
-        result = result.filter((row) => val.includes(row[filter.name]));
-      } else if (type === "dateRange") {
-        const fromTs = dateToTimestamp(val.from);
-        const toTs = val.to ? dateToTimestamp(val.to) + 86400000 - 1 : null;
-        result = result.filter((row) => {
-          const rowTs = new Date(row[filter.name]).getTime();
-          if (Number.isNaN(rowTs)) return false;
-          if (fromTs && rowTs < fromTs) return false;
-          if (toTs && rowTs > toTs) return false;
-          return true;
-        });
-      } else {
-        result = result.filter((row) => row[filter.name] === val);
-      }
-    }
+    let result = filterRows(data, filters, resolvedFilters);
 
     const searchLower = (resolvedSearch || "").toLowerCase().trim();
     if (searchEnabled && searchLower) {
-      if (fuzzySearch) {
-        const fuse = new Fuse(result, {
-          keys: searchFields,
-          threshold: 0.4,
-          distance: 100,
-          ignoreLocation: true,
-          ...fuzzyOptions,
-        });
-        result = fuse.search(searchLower).map((r) => r.item);
-      } else {
-        result = result.filter((row) =>
-          searchFields.some((f) =>
-            String(row[f] || "").toLowerCase().includes(searchLower)
-          )
-        );
-      }
+      result = searchRows(result, searchLower, searchFields, {
+        fuzzy: fuzzySearch,
+        fuzzyOptions,
+      });
     }
 
     return result;
@@ -1673,7 +1615,7 @@ export const Kanban = ({
     <Flex direction="column" gap="sm">
       <KanbanToolbar
         showSearch={searchEnabled}
-        searchValue={resolvedSearch}
+        searchValue={searchInputValue}
         searchPlaceholder={resolvedSearchPlaceholder}
         onSearchChange={handleSearch}
         filters={filters}

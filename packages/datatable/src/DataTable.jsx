@@ -266,7 +266,16 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import Fuse from "fuse.js";
+import {
+  getEmptyFilterValue,
+  isFilterActive,
+  formatDateChip,
+  toStableKey,
+  filterRows,
+  searchRows,
+} from "../../../src/utils/query.js";
+import { useDebouncedDispatch, useSelectionReset } from "../../../src/utils/interactionHooks.js";
+import { editValidationError } from "./editValidation.js";
 import {
   Box,
   Button,
@@ -301,21 +310,9 @@ import {
 } from "@hubspot/ui-extensions";
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Helpers
+// Helpers — filter/search primitives and the date/key helpers are shared with
+// Kanban via src/utils/query.js (imported above).
 // ═══════════════════════════════════════════════════════════════════════════
-
-const formatDateChip = (dateObj) => {
-  if (!dateObj) return "";
-  const { year, month, date } = dateObj;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  }).format(new Date(year, month, date));
-};
-
-const dateToTimestamp = (dateObj) => {
-  if (!dateObj) return null;
-  return new Date(dateObj.year, dateObj.month, dateObj.date).getTime();
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Intelligent auto-width
@@ -354,14 +351,6 @@ const serializeSortState = (sortState) => {
   const activeField = Object.keys(sortState).find((field) => sortState[field] !== "none");
   if (!activeField) return null;
   return { field: activeField, direction: sortState[activeField] };
-};
-
-const toStableKey = (value) => {
-  try {
-    return JSON.stringify(value);
-  } catch (_error) {
-    return String(value);
-  }
 };
 
 const computeAutoWidths = (columns, data) => {
@@ -449,13 +438,6 @@ const computeAutoWidths = (columns, data) => {
   return results;
 };
 
-const getEmptyFilterValue = (filter) => {
-  const type = filter.type || "select";
-  if (type === "multiselect") return [];
-  if (type === "dateRange") return { from: null, to: null };
-  return "";
-};
-
 const BOOLEAN_SELECT_OPTIONS = [
   { label: "Yes", value: true },
   { label: "No", value: false },
@@ -467,13 +449,6 @@ const resolveEditOptions = (col, data) => {
   const sample = data.find((row) => row[col.field] != null);
   if (sample && typeof sample[col.field] === "boolean") return BOOLEAN_SELECT_OPTIONS;
   return [];
-};
-
-const isFilterActive = (filter, value) => {
-  const type = filter.type || "select";
-  if (type === "multiselect") return Array.isArray(value) && value.length > 0;
-  if (type === "dateRange") return value && (value.from || value.to);
-  return !!value;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -653,8 +628,6 @@ export const DataTable = ({
   // ---------------------------------------------------------------------------
   // Search debounce
   // ---------------------------------------------------------------------------
-  const debounceRef = useRef(null);
-
   const fireSearchCallback = useCallback((term) => {
     if (serverSide && onSearchChange) onSearchChange(term);
   }, [serverSide, onSearchChange]);
@@ -686,24 +659,23 @@ export const DataTable = ({
     }
   }, [resetPageOnChange, serverSide, onPageChange]);
 
+  const dispatchSearchChange = useCallback((term) => {
+    lastAppliedSearchRef.current = term;
+    fireSearchCallback(term);
+    fireParamsChange({ search: term, page: resetPageOnChange ? 1 : undefined });
+  }, [fireSearchCallback, fireParamsChange, resetPageOnChange]);
+
+  const dispatchSearchDebounced = useDebouncedDispatch(
+    internalSearchTerm,
+    searchDebounce,
+    dispatchSearchChange
+  );
+
   const handleSearchChange = useCallback((term) => {
     setInternalSearchTerm(term);
     resetPage();
-    const dispatch = () => {
-      lastAppliedSearchRef.current = term;
-      fireSearchCallback(term);
-      fireParamsChange({ search: term, page: resetPageOnChange ? 1 : undefined });
-    };
-    if (searchDebounce > 0) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(dispatch, searchDebounce);
-    } else {
-      dispatch();
-    }
-  }, [searchDebounce, fireSearchCallback, fireParamsChange, resetPage, resetPageOnChange]);
-
-  // Clean up debounce timer on unmount
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+    dispatchSearchDebounced(term);
+  }, [dispatchSearchDebounced, resetPage]);
 
   const handleFilterChange = useCallback((name, value) => {
     const next = { ...filterValues, [name]: value };
@@ -744,56 +716,14 @@ export const DataTable = ({
   const filteredData = useMemo(() => {
     if (serverSide) return data; // server already filtered
 
-    let result = data;
-
-    // Apply each filter
-    filters.forEach((filter) => {
-      const value = filterValues[filter.name];
-      if (!isFilterActive(filter, value)) return;
-
-      const type = filter.type || "select";
-
-      if (filter.filterFn) {
-        result = result.filter((row) => filter.filterFn(row, value));
-      } else if (type === "multiselect") {
-        // "Any of" matching
-        result = result.filter((row) => value.includes(row[filter.name]));
-      } else if (type === "dateRange") {
-        const fromTs = dateToTimestamp(value.from);
-        const toTs = value.to ? dateToTimestamp(value.to) + 86400000 - 1 : null; // end of day
-        result = result.filter((row) => {
-          const rowTs = new Date(row[filter.name]).getTime();
-          if (Number.isNaN(rowTs)) return false;
-          if (fromTs && rowTs < fromTs) return false;
-          if (toTs && rowTs > toTs) return false;
-          return true;
-        });
-      } else {
-        // Default: exact match
-        result = result.filter((row) => row[filter.name] === value);
-      }
-    });
+    let result = filterRows(data, filters, filterValues);
 
     // Search across searchFields
     if (searchTerm && searchFields.length > 0) {
-      if (fuzzySearch) {
-        const fuse = new Fuse(result, {
-          keys: searchFields,
-          threshold: 0.4,
-          distance: 100,
-          ignoreLocation: true,
-          ...fuzzyOptions,
-        });
-        result = fuse.search(searchTerm).map((r) => r.item);
-      } else {
-        const term = searchTerm.toLowerCase();
-        result = result.filter((row) =>
-          searchFields.some((field) => {
-            const val = row[field];
-            return val && String(val).toLowerCase().includes(term);
-          })
-        );
-      }
+      result = searchRows(result, searchTerm, searchFields, {
+        fuzzy: fuzzySearch,
+        fuzzyOptions,
+      });
     }
 
     return result;
@@ -1023,7 +953,6 @@ export const DataTable = ({
   // Row selection
   // ---------------------------------------------------------------------------
   const [internalSelectedIds, setInternalSelectedIds] = useState(new Set());
-  const selectionResetRef = useRef("");
 
   // Sync internal state when external selectedIds changes
   useEffect(() => {
@@ -1047,16 +976,13 @@ export const DataTable = ({
   );
 
   // Reset selection memory on query changes or explicit reset-key changes (uncontrolled mode only)
-  useEffect(() => {
-    if (!selectable || externalSelectedIds != null) {
-      selectionResetRef.current = combinedSelectionResetKey;
-      return;
-    }
-    if (selectionResetRef.current && selectionResetRef.current !== combinedSelectionResetKey) {
-      setInternalSelectedIds(new Set());
-    }
-    selectionResetRef.current = combinedSelectionResetKey;
-  }, [combinedSelectionResetKey, selectable, externalSelectedIds]);
+  const clearSelection = useCallback(() => setInternalSelectedIds(new Set()), []);
+  useSelectionReset({
+    resetKey: combinedSelectionResetKey,
+    enabled: selectable,
+    isControlled: externalSelectedIds != null,
+    clearSelection,
+  });
 
   const selectedIds = externalSelectedIds != null
     ? new Set(externalSelectedIds)
@@ -1168,9 +1094,9 @@ export const DataTable = ({
     const { keepEditing = false } = options;
     const col = columns.find((c) => c.field === field);
     if (col?.editValidate) {
-      const result = col.editValidate(value, row);
-      if (result !== true && result !== undefined && result !== null) {
-        setEditError(typeof result === "string" ? result : "Invalid value");
+      const err = editValidationError(col.editValidate(value, row));
+      if (err) {
+        setEditError(err);
         return false;
       }
     }
@@ -1202,14 +1128,7 @@ export const DataTable = ({
     const validate = col.editValidate;
     const validationProps = validate && editError ? { error: true, validationMessage: editError } : {};
     const onInputValidate = validate
-      ? (val) => {
-        const result = validate(val, row);
-        if (result !== true && result !== undefined && result !== null) {
-          setEditError(typeof result === "string" ? result : "Invalid value");
-        } else {
-          setEditError(null);
-        }
-      }
+      ? (val) => setEditError(editValidationError(validate(val, row)))
       : undefined;
     const handleInput = (val) => {
       setEditValue(val);
@@ -1295,9 +1214,9 @@ export const DataTable = ({
 
     const fire = (val) => {
       if (validate) {
-        const result = validate(val, row);
-        if (result !== true && result !== undefined && result !== null) {
-          setInlineErrors((prev) => ({ ...prev, [cellKey]: typeof result === "string" ? result : "Invalid value" }));
+        const err = editValidationError(validate(val, row));
+        if (err) {
+          setInlineErrors((prev) => ({ ...prev, [cellKey]: err }));
           return; // Block the edit
         }
         setInlineErrors((prev) => { const next = { ...prev }; delete next[cellKey]; return next; });
@@ -1309,12 +1228,13 @@ export const DataTable = ({
     const validationProps = cellError ? { error: true, validationMessage: cellError } : {};
     const onInputValidate = validate
       ? (val) => {
-        const result = validate(val, row);
-        if (result !== true && result !== undefined && result !== null) {
-          setInlineErrors((prev) => ({ ...prev, [cellKey]: typeof result === "string" ? result : "Invalid value" }));
-        } else {
-          setInlineErrors((prev) => { const next = { ...prev }; delete next[cellKey]; return next; });
-        }
+        const err = editValidationError(validate(val, row));
+        setInlineErrors((prev) => {
+          if (err) return { ...prev, [cellKey]: err };
+          const next = { ...prev };
+          delete next[cellKey];
+          return next;
+        });
       }
       : undefined;
     const emitInput = (val) => {
@@ -1655,7 +1575,11 @@ export const DataTable = ({
       {/* Loading / error / table / empty state */}
       {loading ? (
         renderLoadingState ? renderLoadingState({ label: resolvedLoadingLabel }) : (
-          <LoadingSpinner label={resolvedLoadingLabel} layout="centered" />
+          <Flex direction="column" align="center" justify="center">
+            <EmptyState title={resolvedLoadingLabel} layout="vertical">
+              <LoadingSpinner label={resolvedLoadingLabel} layout="centered" />
+            </EmptyState>
+          </Flex>
         )
       ) : error ? (
         renderErrorState ? renderErrorState({
