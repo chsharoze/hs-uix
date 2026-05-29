@@ -288,7 +288,6 @@ import {
   Icon,
   Input,
   Link,
-  LoadingSpinner,
   MultiSelect,
   NumberInput,
   SearchInput,
@@ -302,6 +301,7 @@ import {
   TableHeader,
   TableRow,
   Tag,
+  Tile,
   Text,
   TextArea,
   TimeInput,
@@ -471,7 +471,7 @@ export const DataTable = ({
   // Filters
   filters = [],
   showFilterBadges = true,       // show active filter chips/badges
-  showClearFiltersButton = true, // show "Clear all" filters reset button
+  showClearFiltersButton,        // show "Clear all" reset button; defaults to showFilterBadges when omitted
   filterInlineLimit = 2,         // number of filters shown inline before overflow
 
   // Pagination
@@ -939,9 +939,14 @@ export const DataTable = ({
   const resolvedDateFromLabel = labels?.dateFrom || "From";
   const resolvedDateToLabel = labels?.dateTo || "To";
   const resolvedLoadingLabel = labels?.loading || `Loading ${pluralLabel}...`;
+  const resolvedLoadingMessage = labels?.loadingMessage || "This should only take a moment.";
   const resolvedErrorTitle = labels?.errorTitle || "Something went wrong.";
   const resolvedErrorMessage = labels?.errorMessage || "An error occurred while loading data.";
   const resolvedRetryMessage = labels?.retryMessage || "Please try again.";
+
+  // The clear-all affordance follows the chips unless the caller opts in/out
+  // explicitly: hiding the filter badges hides "Clear all" by default too.
+  const resolvedShowClearFiltersButton = showClearFiltersButton ?? showFilterBadges;
 
   const recordCountLabel = rowCountText
     ? rowCountText(shownOnPageCount, displayCount)
@@ -993,11 +998,18 @@ export const DataTable = ({
     displayCount > 0 &&
     !(showSelectionBar && selectable && selectedIds.size > 0);
 
-  const hasToolbarContent =
+  const hasToolbarLeft =
     (showSearch && searchFields.length > 0) ||
     filters.length > 0 ||
-    (activeChips.length > 0 && (showFilterBadges || showClearFiltersButton)) ||
-    showToolbarCount;
+    (activeChips.length > 0 && (showFilterBadges || resolvedShowClearFiltersButton));
+
+  // When there's a title but nothing on the toolbar's left (search/filters
+  // hidden), the count rides on the title row so the two sit on one line
+  // instead of stacking awkwardly. Otherwise the count stays in the toolbar.
+  const countInTitleRow = !!title && showToolbarCount && !hasToolbarLeft;
+  const countInToolbar = showToolbarCount && !countInTitleRow;
+
+  const hasToolbarContent = hasToolbarLeft || countInToolbar;
 
   const showRowActionsColumn = !!rowActions && !(
     hideRowActionsWhenSelectionActive && selectable && selectedIds.size > 0
@@ -1454,6 +1466,9 @@ export const DataTable = ({
       {title && (
         <Flex direction="row" align="center" justify="between" gap="sm">
           <Text format={{ fontWeight: "demibold" }}>{title}</Text>
+          {countInTitleRow && (
+            <Text variant="microcopy" format={rowCountBold ? { fontWeight: "bold" } : undefined}>{recordCountLabel}</Text>
+          )}
         </Flex>
       )}
 
@@ -1493,14 +1508,14 @@ export const DataTable = ({
               )}
 
               {/* Active filter chips / clear filters */}
-              {activeChips.length > 0 && (showFilterBadges || showClearFiltersButton) && (
+              {activeChips.length > 0 && (showFilterBadges || resolvedShowClearFiltersButton) && (
                 <Flex direction="row" align="center" gap="sm" wrap="wrap">
                   {showFilterBadges && activeChips.map((chip) => (
                     <Tag key={chip.key} variant="default" onDelete={() => handleFilterRemove(chip.key)}>
                       {chip.label}
                     </Tag>
                   ))}
-                  {showClearFiltersButton && (
+                  {resolvedShowClearFiltersButton && (
                     <Button
                       variant="transparent"
                       size="extra-small"
@@ -1514,8 +1529,8 @@ export const DataTable = ({
             </Flex>
           </Box>
 
-          {/* Right: Record count (up to 25%) */}
-          {showToolbarCount && (
+          {/* Right: Record count (up to 25%) — only when there's no title row to host it */}
+          {countInToolbar && (
             <Box flex={1} alignSelf="end">
               <Flex direction="row" justify="end">
                 <Text variant="microcopy" format={rowCountBold ? { fontWeight: "bold" } : undefined}>{recordCountLabel}</Text>
@@ -1575,11 +1590,15 @@ export const DataTable = ({
       {/* Loading / error / table / empty state */}
       {loading ? (
         renderLoadingState ? renderLoadingState({ label: resolvedLoadingLabel }) : (
-          <Flex direction="column" align="center" justify="center">
-            <EmptyState title={resolvedLoadingLabel} layout="vertical">
-              <LoadingSpinner label={resolvedLoadingLabel} layout="centered" />
-            </EmptyState>
-          </Flex>
+          // Same EmptyState layout as the empty state, just the "building" image
+          // + a loading message — so loading and empty match with no layout shift.
+          <Tile>
+            <Flex direction="column" align="center" justify="center">
+              <EmptyState title={resolvedLoadingLabel} imageName="building" layout="vertical">
+                <Text>{resolvedLoadingMessage}</Text>
+              </EmptyState>
+            </Flex>
+          </Tile>
         )
       ) : error ? (
         renderErrorState ? renderErrorState({
@@ -1593,11 +1612,13 @@ export const DataTable = ({
         )
       ) : displayRows.length === 0 ? (
         renderEmptyState ? renderEmptyState({ title: resolvedEmptyTitle, message: resolvedEmptyMessage }) : (
-          <Flex direction="column" align="center" justify="center">
-            <EmptyState title={resolvedEmptyTitle} layout="vertical">
-              <Text>{resolvedEmptyMessage}</Text>
-            </EmptyState>
-          </Flex>
+          <Tile>
+            <Flex direction="column" align="center" justify="center">
+              <EmptyState title={resolvedEmptyTitle} layout="vertical">
+                <Text>{resolvedEmptyMessage}</Text>
+              </EmptyState>
+            </Flex>
+          </Tile>
         )
       ) : (
         <Table

@@ -556,7 +556,7 @@ If your data comes from an API or you have too many records to load up-front, dr
 | `filters` | `KanbanFilterConfig[]` | `[]` | Filter configurations (see below) |
 | `filterInlineLimit` | number | `2` | Max filters shown inline before overflow into a "Filters" button |
 | `showFilterBadges` | boolean | `true` | Show active filter chips |
-| `showClearFiltersButton` | boolean | `true` | Show "Clear all" reset button |
+| `showClearFiltersButton` | boolean | `showFilterBadges` | Show "Clear all" reset button. Defaults to the value of `showFilterBadges`, so hiding the chips hides the reset button too unless set explicitly |
 | `sortOptions` | `KanbanSortOption[]` | — | Sort options (single board-wide sort) |
 | `defaultSort` | string | — | Initial sort option `value` (uncontrolled) |
 | `sort` | string | — | Controlled sort option `value` |

@@ -3,6 +3,7 @@ export * from "./AutoStatusTag.js";
 export * from "./AvatarStack.js";
 export * from "./CrmLookupSelect.js";
 export * from "./datePresets.js";
+export * from "./Icon.js";
 export * from "./KeyValueList.js";
 export * from "./SectionHeader.js";
 export * from "./Spinner.js";

@@ -1984,17 +1984,17 @@ export const FormBuilder = forwardRef(function FormBuilder(props, ref) {
                   return <Box key={sf.name} flex={1}>{sfElement}</Box>;
                 })}
                 <Inline gap="xs">
-                  {canReorder && rowIdx > 0 && (
+                  {canReorder && (
                     renderMoveUpControl
-                      ? renderMoveUpControl({ index: rowIdx, onClick: () => moveRow(rowIdx, rowIdx - 1) })
-                      : <Button variant="secondary" size="sm" onClick={() => moveRow(rowIdx, rowIdx - 1)}>
+                      ? renderMoveUpControl({ index: rowIdx, disabled: rowIdx === 0, onClick: () => moveRow(rowIdx, rowIdx - 1) })
+                      : <Button variant="secondary" size="sm" disabled={rowIdx === 0} onClick={() => moveRow(rowIdx, rowIdx - 1)}>
                         {moveUpLabel}
                       </Button>
                   )}
-                  {canReorder && rowIdx < rows.length - 1 && (
+                  {canReorder && (
                     renderMoveDownControl
-                      ? renderMoveDownControl({ index: rowIdx, onClick: () => moveRow(rowIdx, rowIdx + 1) })
-                      : <Button variant="secondary" size="sm" onClick={() => moveRow(rowIdx, rowIdx + 1)}>
+                      ? renderMoveDownControl({ index: rowIdx, disabled: rowIdx === rows.length - 1, onClick: () => moveRow(rowIdx, rowIdx + 1) })
+                      : <Button variant="secondary" size="sm" disabled={rowIdx === rows.length - 1} onClick={() => moveRow(rowIdx, rowIdx + 1)}>
                         {moveDownLabel}
                       </Button>
                   )}
@@ -2016,7 +2016,7 @@ export const FormBuilder = forwardRef(function FormBuilder(props, ref) {
               renderAddControl
                 ? renderAddControl({ onClick: addRow, count: rows.length })
                 : <Link onClick={addRow}>
-                  <Flex direction="row" align="center" gap="flush">
+                  <Flex direction="row" align="center" gap="xs">
                     <Icon name="add" />
                     <Text format={{ fontWeight: "demibold" }}>{addLabel}</Text>
                   </Flex>

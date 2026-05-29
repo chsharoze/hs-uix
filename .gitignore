@@ -1,6 +1,10 @@
 node_modules
 dist
 .DS_Store
+
+# Intermediate icon-scrape dump — the committed artifact is
+# src/common-components/icons.generated.js (run `npm run build:icons`)
+scripts/scraped-icons.json
 .claude/settings.local.json
 **/.claude/settings.local.json
 .claude/projects

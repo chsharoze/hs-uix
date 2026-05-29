@@ -98,6 +98,7 @@ const DEFAULT_LABELS = {
   emptyTitle: "No cards",
   emptyMessage: "Nothing matches the current filters.",
   loading: "Loading board...",
+  loadingMessage: "This should only take a moment.",
   errorTitle: "Something went wrong.",
   errorMessage: "An error occurred while loading data.",
   cardCount: (n) => String(n),
@@ -1099,7 +1100,7 @@ export const Kanban = ({
   filters,
   filterInlineLimit = DEFAULT_FILTER_INLINE_LIMIT,
   showFilterBadges = true,
-  showClearFiltersButton = true,
+  showClearFiltersButton,
   sortOptions,
   defaultSort,
   sort,
@@ -1561,7 +1562,15 @@ export const Kanban = ({
     )
   ) : loading && data.length === 0 ? (
     renderLoadingState ? renderLoadingState({ label: labels.loading }) : (
-      <LoadingSpinner size="md" layout="centered" label={labels.loading} />
+      // Same EmptyState layout as the empty state (just the "building" image +
+      // a loading message) so loading and empty match with no layout shift.
+      <Tile>
+        <Flex direction="column" align="center" justify="center">
+          <EmptyState title={labels.loading} imageName="building" layout="vertical">
+            <Text>{labels.loadingMessage}</Text>
+          </EmptyState>
+        </Flex>
+      </Tile>
     )
   ) : filteredData.length === 0 ? (
     renderEmptyState ? renderEmptyState({
@@ -1569,9 +1578,11 @@ export const Kanban = ({
       message: labels.emptyMessage,
     }) : (
       <Tile>
-        <EmptyState title={labels.emptyTitle} layout="vertical" reverseOrder={true}>
-          <Text>{labels.emptyMessage}</Text>
-        </EmptyState>
+        <Flex direction="column" align="center" justify="center">
+          <EmptyState title={labels.emptyTitle} layout="vertical">
+            <Text>{labels.emptyMessage}</Text>
+          </EmptyState>
+        </Flex>
       </Tile>
     )
   ) : (
@@ -1611,6 +1622,10 @@ export const Kanban = ({
     </Flex>
   );
 
+  // "Clear all" follows the chips unless explicitly set: hiding the filter
+  // badges hides the clear-all reset button by default too.
+  const resolvedShowClearFiltersButton = showClearFiltersButton ?? showFilterBadges;
+
   return (
     <Flex direction="column" gap="sm">
       <KanbanToolbar
@@ -1623,7 +1638,7 @@ export const Kanban = ({
         onFilterChange={handleFilter}
         filterInlineLimit={filterInlineLimit}
         showFilterBadges={showFilterBadges}
-        showClearFiltersButton={showClearFiltersButton}
+        showClearFiltersButton={resolvedShowClearFiltersButton}
         activeChips={activeChips}
         onFilterRemove={handleFilterRemove}
         sortOptions={sortOptions}

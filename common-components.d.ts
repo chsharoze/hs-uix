@@ -229,6 +229,72 @@ export interface SpinnerProps {
   truncate?: boolean | { tooltipText?: string };
 }
 
+export type IconSize =
+  | number
+  | "xs"
+  | "extra-small"
+  | "sm"
+  | "small"
+  | "md"
+  | "med"
+  | "medium"
+  | "lg"
+  | "large"
+  | "xl"
+  | "extra-large";
+
+export interface IconPathObject {
+  d: string;
+  fill?: string;
+  fillRule?: "nonzero" | "evenodd";
+}
+
+export type IconPath = string | IconPathObject;
+
+export interface IconEntry {
+  /** Defaults to "0 0 24 24" when omitted. */
+  viewBox?: string;
+  paths: IconPath[];
+  /** Optional transform applied to all paths (e.g. a mirror/rotation). */
+  transform?: string;
+}
+
+export interface IconProps {
+  /** A registered glyph name (native or custom). Unknown names render nothing. */
+  name: string;
+  /** A semantic token ("inherit" | "alert" | "warning" | "success") or any CSS color. */
+  color?: string;
+  size?: IconSize;
+  /** Accessible label for screen readers. */
+  screenReaderText?: string;
+}
+
+export interface IconDataUriResult {
+  src: string;
+  width: number;
+  height: number;
+}
+
+export interface IconDataUriOptions {
+  size?: IconSize;
+  color?: string;
+}
+
+export declare function Icon(props: IconProps): ReactNode;
+/** Custom glyph names registered in this library (excludes native names). */
+export declare const ICON_NAMES: string[];
+/** The custom glyph registry, keyed by icon name. */
+export declare const ICONS: Record<string, IconEntry>;
+/** The native `@hubspot/ui-extensions` `<Icon>` name whitelist, sorted. */
+export declare const NATIVE_ICON_NAME_LIST: string[];
+/** Build an SVG data URI from a registered name or an inline entry. Null for unknown names. */
+export declare function makeIconDataUri(
+  nameOrEntry: string | IconEntry,
+  options?: IconDataUriOptions
+): IconDataUriResult | null;
+/** Parse a raw `<svg>` string into a registry entry (drops mask/defs, keeps per-path fills). */
+export declare function svgToIconEntry(raw: string): IconEntry;
+
 export declare function AutoTag(props: AutoTagProps): ReactNode;
 export declare function AutoStatusTag(props: AutoStatusTagProps): ReactNode;
 export declare function SectionHeader(props: SectionHeaderProps): ReactNode;

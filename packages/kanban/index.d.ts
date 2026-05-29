@@ -172,6 +172,7 @@ export interface KanbanLabels {
   emptyTitle?: string;
   emptyMessage?: string;
   loading?: string;
+  loadingMessage?: string;
   errorTitle?: string;
   errorMessage?: string;
   cardCount?: (n: number) => string;
@@ -313,7 +314,7 @@ export interface KanbanProps<Row = Record<string, unknown>, Id = string | number
   filterInlineLimit?: number;
   /** Show active filter chips with individual clear affordances. Default true. */
   showFilterBadges?: boolean;
-  /** Show the "Clear all" reset button when filters are active. Default true. */
+  /** Show the "Clear all" reset button when filters are active. Defaults to `showFilterBadges` when omitted, so hiding the chips hides the clear-all button too. */
   showClearFiltersButton?: boolean;
   /** Supports simple options or grouped field/direction options for the richer sort picker UI. */
   sortOptions?: KanbanSortOption<Row>[];

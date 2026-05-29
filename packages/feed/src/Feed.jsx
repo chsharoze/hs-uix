@@ -14,7 +14,6 @@ import {
   Inline,
   Link,
   List,
-  LoadingSpinner,
   MultiSelect,
   SearchInput,
   Select,
@@ -35,6 +34,7 @@ const DEFAULT_LABELS = {
   dateFrom: "From",
   dateTo: "To",
   loading: "Loading feed...",
+  loadingMessage: "This should only take a moment.",
   loadingMore: "Loading...",
   loadMore: "View more",
   collapseAll: "Collapse all",
@@ -918,7 +918,15 @@ export const Feed = ({
   if (loading) {
     bodyContent.push(
       renderLoadingState ? renderLoadingState({ label: labels.loading }) : (
-        <LoadingSpinner key="loading" label={labels.loading} layout="centered" />
+        // Same EmptyState layout as the empty state (just the "building" image +
+        // a loading message) so loading and empty match with no layout shift.
+        <Tile key="loading">
+          <Flex direction="column" align="center" justify="center">
+            <EmptyState title={labels.loading} imageName="building" layout="vertical">
+              <Text>{labels.loadingMessage}</Text>
+            </EmptyState>
+          </Flex>
+        </Tile>
       )
     );
   } else if (error) {
@@ -936,9 +944,13 @@ export const Feed = ({
   } else if (processedItems.length === 0) {
     bodyContent.push(
       renderEmptyState ? renderEmptyState({ title: labels.emptyTitle, message: labels.emptyMessage }) : (
-        <EmptyState key="empty" title={labels.emptyTitle} layout="vertical">
-          <Text>{labels.emptyMessage}</Text>
-        </EmptyState>
+        <Tile key="empty">
+          <Flex direction="column" align="center" justify="center">
+            <EmptyState title={labels.emptyTitle} layout="vertical">
+              <Text>{labels.emptyMessage}</Text>
+            </EmptyState>
+          </Flex>
+        </Tile>
       )
     );
   } else {

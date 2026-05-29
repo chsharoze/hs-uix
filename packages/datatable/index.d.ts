@@ -124,7 +124,8 @@ export interface DataTableLabels {
   clearAll?: string; // Active filter chips reset: "Clear all"
   dateFrom?: string; // Date range filter start placeholder: "From"
   dateTo?: string; // Date range filter end placeholder: "To"
-  loading?: string; // Loading spinner label: "Loading {pluralLabel}..."
+  loading?: string; // Loading state title: "Loading {pluralLabel}..."
+  loadingMessage?: string; // Loading state body message
   errorTitle?: string; // Error state heading: "Something went wrong."
   errorMessage?: string; // Error state body (non-string error): "An error occurred while loading data."
   retryMessage?: string; // Error state body (string error): "Please try again."
@@ -168,8 +169,8 @@ export interface DataTableProps<Row = Record<string, unknown>, Id = string | num
   fuzzyOptions?: Record<string, unknown>;
 
   filters?: DataTableFilterConfig<Row>[];
-  showFilterBadges?: boolean;
-  showClearFiltersButton?: boolean;
+  showFilterBadges?: boolean; // Show active filter chips/badges (default true)
+  showClearFiltersButton?: boolean; // Show "Clear all" reset button; defaults to showFilterBadges when omitted
 
   pageSize?: number;
   maxVisiblePageButtons?: number;

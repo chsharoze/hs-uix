@@ -104,6 +104,7 @@ interface KanbanProps<Row, Id = string | number> {
   fuzzySearch?: boolean;
   filters?: DataTableFilterConfig<Row>[];      // reuse the exact type
   showFilterBadges?: boolean;
+  showClearFiltersButton?: boolean;            // defaults to showFilterBadges when omitted
   filterInlineLimit?: number;                  // default 2
 
   // --- Sort (applies within each column) ---

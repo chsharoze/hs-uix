@@ -61,6 +61,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "build:icons": "node scripts/build-icons.mjs",
     "dev": "tsup --watch",
     "link:demos": "npm link && cd ../hs-uix-demos/src/app/pages && npm link hs-uix",
     "pack:demos": "node scripts/pack-demos.mjs",

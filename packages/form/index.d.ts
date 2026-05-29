@@ -79,8 +79,8 @@ export interface FormBuilderRepeaterProps {
   reorderable?: boolean;
   moveUpLabel?: string;
   moveDownLabel?: string;
-  renderMoveUp?: (props: { index: number; onClick: () => void }) => ReactNode;
-  renderMoveDown?: (props: { index: number; onClick: () => void }) => ReactNode;
+  renderMoveUp?: (props: { index: number; disabled: boolean; onClick: () => void }) => ReactNode;
+  renderMoveDown?: (props: { index: number; disabled: boolean; onClick: () => void }) => ReactNode;
 }
 
 export interface FormBuilderLabels {

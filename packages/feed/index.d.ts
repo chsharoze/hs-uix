@@ -126,6 +126,7 @@ export interface FeedLabels {
   dateFrom?: string;
   dateTo?: string;
   loading?: string;
+  loadingMessage?: string;
   loadingMore?: string;
   loadMore?: string;
   emptyTitle?: string;

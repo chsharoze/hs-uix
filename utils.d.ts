@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { DataTableProps, DataTableColumn } from "./packages/datatable/index";
+import type { KanbanProps } from "./packages/kanban/index";
 
 export type AutoStatusTagVariant = "default" | "success" | "warning" | "danger" | "info";
 export type AutoTagVariant = "default" | "success" | "warning" | "error" | "info";
@@ -60,6 +61,7 @@ export declare function makeCrmSearchSelectField<Field = Record<string, unknown>
 export declare function makeCrmSearchMultiSelectField<Field = Record<string, unknown>>(field: Field, searchOptions: { options?: BuiltOption[]; loading?: boolean; isLoading?: boolean }): Field & CrmSearchFormField;
 export declare function resolveCrmObjectType(objectType: string): string;
 export declare const CrmDataTable: ComponentType<CrmDataTableProps>;
+export declare const CrmKanban: ComponentType<CrmKanbanProps>;
 export interface FormatCurrencyCompactOptions extends Intl.NumberFormatOptions {
   locale?: string;
   currency?: string;
@@ -150,6 +152,28 @@ export interface CrmDataTableProps<Row = Record<string, unknown>> extends Omit<D
   format?: Record<string, unknown>;
   mapRecord?: (record: unknown) => Row;
   dataTableProps?: Partial<DataTableProps<Row>>;
+}
+
+export interface CrmKanbanProps<Row = Record<string, unknown>>
+  extends Omit<KanbanProps<Row>, "data" | "loading" | "error" | "stages" | "groupBy" | "searchValue" | "filterValues" | "onParamsChange"> {
+  objectType: "contact" | "contacts" | "company" | "companies" | "deal" | "deals" | string;
+  properties?: string[];
+  groupBy: KanbanProps<Row>["groupBy"];
+  /** Pass for real pipeline labels; auto-derived from the batch when omitted. */
+  stages?: KanbanProps<Row>["stages"];
+  /** Friendly labels for auto-derived stages — object map or fn. */
+  stageLabels?: Record<string, string> | ((value: string) => string);
+  pageLength?: number;
+  serverSide?: boolean;
+  autoFilters?: boolean | string[] | { fields?: string[] };
+  autoFilterMaxOptions?: number;
+  filterMap?: CrmSearchConfigOptions<Row>["filterMap"];
+  propertyMap?: Record<string, string>;
+  sortMap?: CrmSearchConfigOptions<Row>["sortMap"];
+  searchFields?: string[];
+  format?: Record<string, unknown>;
+  mapRecord?: (record: unknown) => Row;
+  kanbanProps?: Partial<KanbanProps<Row>>;
 }
 
 export interface DeriveCardFieldsOptions<Row = Record<string, unknown>> {

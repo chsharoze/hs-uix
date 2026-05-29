@@ -1,6 +1,7 @@
 # Next Release (unreleased)
 
 ## Features
+- FormBuilder: repeater reorder controls now always render (disabled on the first row's "up" and the last row's "down") so rows stay column-aligned. `repeaterProps.renderMoveUp` / `renderMoveDown` now receive a `disabled` flag.
 - FormBuilder: add `alwaysEditable` field prop — per-field escape hatch that keeps a field editable even when the form-level `readOnly` is set (#8).
 - FormBuilder: surface submit-time validation failures via a new `onValidationFail({ errors, fields, firstInvalidField })` callback, and add `openSectionOnValidationFail` to auto-open the accordion section containing the first invalid field (#9).
 

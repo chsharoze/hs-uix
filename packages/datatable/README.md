@@ -113,7 +113,7 @@ hubspot.extend(() => (
 
 ![Active Filters](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/fully-featured-table-active-filters.png)
 
-When more than 2 filters are defined, the first 2 appear inline and the rest are tucked behind a **Filters** button with a funnel icon. Active filters display as removable chips with a "Clear all" option by default. You can hide badges via `showFilterBadges={false}` and keep reset with `showClearFiltersButton={true}`. Footer totals are declared directly on the column — a static string or a function that receives the filtered data.
+When more than 2 filters are defined, the first 2 appear inline and the rest are tucked behind a **Filters** button with a funnel icon. Active filters display as removable chips with a "Clear all" option by default. Hiding the badges via `showFilterBadges={false}` also hides the "Clear all" button by default — set `showClearFiltersButton={true}` to keep the reset without chips. Footer totals are declared directly on the column — a static string or a function that receives the filtered data.
 
 ```jsx
 import React from "react";
@@ -865,7 +865,7 @@ function ServerSideTable({ runServerlessFunction }) {
 | `searchPlaceholder` | string | `"Search..."` | Placeholder text for search input |
 | `filters` | Array | `[]` | Filter configurations (see below) |
 | `showFilterBadges` | boolean | `true` | Show active filter chips/badges below the filter controls |
-| `showClearFiltersButton` | boolean | `true` | Show "Clear all" filters reset button when filters are active |
+| `showClearFiltersButton` | boolean | `showFilterBadges` | Show "Clear all" filters reset button when filters are active. Defaults to the value of `showFilterBadges`, so hiding the chips hides the reset button too unless you set it explicitly |
 | `pageSize` | number | `10` | Rows per page |
 | `maxVisiblePageButtons` | number | — | Max page number buttons to display |
 | `showButtonLabels` | boolean | `true` | Show First/Prev/Next/Last text labels |
