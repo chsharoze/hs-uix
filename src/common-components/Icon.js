@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Icon as HsIcon } from "@hubspot/ui-extensions";
+import { Image, Icon as HsIcon, Link } from "@hubspot/ui-extensions";
 import { HS_TEXT_COLOR } from "./svgDefaults.js";
 import { GENERATED_ICONS } from "./icons.generated.js";
 
@@ -182,8 +182,43 @@ export const svgToIconEntry = (raw) => {
   return { viewBox, paths };
 };
 
+const ICON_NAME_ALIASES = {
+  call: "calling",
+  phone: "calling",
+  meeting: "appointment",
+  note: "comment",
+  notes: "comment",
+  task: "tasks",
+  open: "record",
+  openRecord: "record",
+  office: "record",
+  company: "record",
+  external: "link",
+  externalLink: "link",
+  down: "Down",
+  up: "Up",
+  pencil: "edit",
+  trash: "delete",
+};
+
+const NATIVE_ICON_NAME_ALIASES = new Map([
+  ...[...NATIVE_ICON_NAMES].map((nativeName) => [nativeName.toLowerCase(), nativeName]),
+  ...Object.entries(ICON_NAME_ALIASES).map(([alias, nativeName]) => [alias.toLowerCase(), nativeName]),
+]);
+
+const resolveIconName = (name) => {
+  if (typeof name !== "string") return name;
+  if (NATIVE_ICON_NAMES.has(name)) return name;
+  if (ICONS[name]) return name;
+
+  const nativeOrAlias = NATIVE_ICON_NAME_ALIASES.get(name.toLowerCase());
+  if (nativeOrAlias) return nativeOrAlias;
+
+  return name;
+};
+
 const canUseNative = (name, color, size) =>
-  NATIVE_ICON_NAMES.has(name) &&
+  NATIVE_ICON_NAMES.has(resolveIconName(name)) &&
   (color == null || NATIVE_COLORS.has(color)) &&
   (size == null || typeof size === "string" && NATIVE_SIZE_TOKENS[size] != null);
 
@@ -251,26 +286,52 @@ export const NATIVE_ICON_NAME_LIST = [...NATIVE_ICON_NAMES].sort((a, b) =>
  *   - `color`            "inherit"|"alert"|"warning"|"success" OR any CSS color
  *   - `size`             "sm"|"md"|"lg" (native) OR xs..xl OR a pixel number
  *   - `screenReaderText` accessible label
+ *   - `onClick` / `href`  make the icon interactive
  *
  * Delegates to native <Icon> when the request is native-expressible; otherwise
- * renders the registered glyph through <Image>.
+ * renders the registered glyph through <Image>. HubSpot's native Icon remote
+ * component does not accept interaction props reliably, so interactive native
+ * icons are rendered as a native Icon inside a Link. That preserves the native
+ * glyph while using a primitive that is allowed to own `onClick` / `href`.
  */
-export const Icon = ({ name, color, size, screenReaderText }) => {
-  if (canUseNative(name, color, size)) {
-    return React.createElement(HsIcon, {
-      name,
+export const Icon = ({ name, color, size, screenReaderText, onClick, href }) => {
+  const resolvedName = resolveIconName(name);
+
+  const renderNativeIcon = () =>
+    React.createElement(HsIcon, {
+      name: resolvedName,
       ...(color != null ? { color } : {}),
       ...(size != null ? { size: NATIVE_SIZE_TOKENS[size] } : {}),
       ...(screenReaderText != null ? { screenReaderText } : {}),
     });
-  }
 
-  const result = makeIconDataUri(name, { size, color });
-  if (!result) return null; // unknown name, not native-expressible
+  const renderNative = () => {
+    const icon = renderNativeIcon();
+    if (onClick == null && href == null) return icon;
+    return React.createElement(
+      Link,
+      {
+        ...(onClick != null ? { onClick } : {}),
+        ...(href != null ? { href } : {}),
+      },
+      icon
+    );
+  };
+
+  if (canUseNative(name, color, size)) return renderNative();
+
+  const result = makeIconDataUri(resolvedName, { size, color });
+  if (!result) {
+    // No registered glyph to draw. If the name is native-expressible, render the
+    // native icon (which can't be clickable) rather than nothing.
+    return canUseNative(name, color, size) ? renderNative() : null;
+  }
   return React.createElement(Image, {
     src: result.src,
     width: result.width,
     height: result.height,
     alt: screenReaderText ?? name,
+    ...(onClick != null ? { onClick } : {}),
+    ...(href != null ? { href } : {}),
   });
 };

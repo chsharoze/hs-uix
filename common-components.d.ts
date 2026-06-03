@@ -100,6 +100,139 @@ export interface AvatarStackProps {
   alt?: string;
 }
 
+export interface CollectionFilterConfig {
+  name: string;
+  type?: "select" | "multiselect" | "dateRange" | string;
+  label?: string;
+  placeholder?: string;
+  options?: Array<{ label: ReactNode; value: unknown }>;
+  includeAll?: boolean;
+  allValue?: unknown;
+  emptyValue?: unknown;
+  allLabel?: string;
+  chipLabel?: string;
+  fromLabel?: string;
+  toLabel?: string;
+}
+
+export interface CollectionFilterLabels {
+  all?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface CollectionFilterControlProps {
+  filter?: CollectionFilterConfig;
+  value?: unknown;
+  onChange?: (name: string, value: unknown) => void;
+  namePrefix?: string;
+  labels?: CollectionFilterLabels;
+  selectVariant?: "transparent" | "input" | string;
+  includeAll?: boolean;
+  allValue?: unknown;
+}
+
+export interface ActiveFilterChip {
+  key: string;
+  label: ReactNode;
+}
+
+export interface ActiveFilterChipsProps {
+  chips?: ActiveFilterChip[];
+  showBadges?: boolean;
+  showClearAll?: boolean;
+  clearAllLabel?: ReactNode;
+  onRemove?: (key: string) => void;
+  gap?: string;
+}
+
+export interface CollectionToolbarSearchConfig {
+  visible?: boolean;
+  show?: boolean;
+  name?: string;
+  placeholder?: string;
+  value?: string;
+  clearable?: boolean;
+  onChange?: (value: string) => void;
+  onInput?: (value: string) => void;
+}
+
+export interface CollectionToolbarFiltersConfig {
+  items?: CollectionFilterConfig[];
+  values?: Record<string, unknown>;
+  inlineLimit?: number;
+  namePrefix?: string;
+  onChange?: (name: string, value: unknown) => void;
+  labels?: CollectionFilterLabels & Record<string, unknown>;
+  includeAll?: boolean;
+  allValue?: unknown;
+  selectVariant?: "transparent" | "input" | string;
+  overflowButtonSize?: string;
+  filtersButtonLabel?: ReactNode;
+}
+
+export interface CollectionToolbarChipsConfig {
+  items?: ActiveFilterChip[];
+  showBadges?: boolean;
+  showClearAll?: boolean;
+  clearAllLabel?: ReactNode;
+  onRemove?: (key: string) => void;
+  gap?: string;
+}
+
+export interface CollectionCountLabelObject {
+  singular: string;
+  plural: string;
+}
+
+export interface CollectionCountProps {
+  shown?: number;
+  total?: number;
+  label?: string | CollectionCountLabelObject | ((count: number) => string);
+  text?: ReactNode;
+  formatter?: (shown: number, total: number) => ReactNode;
+  bold?: boolean;
+  variant?: string;
+  format?: Record<string, unknown>;
+}
+
+export interface FormatCollectionCountParams {
+  shown?: number;
+  total?: number;
+  label?: string | CollectionCountLabelObject | ((count: number) => string);
+  formatter?: (shown: number, total: number) => ReactNode;
+}
+
+export interface CollectionSortSelectProps {
+  name?: string;
+  value?: string | null;
+  options?: Array<{ label: ReactNode; value: string }>;
+  placeholder?: string;
+  onChange?: (value: string) => void;
+  includeEmpty?: boolean;
+  emptyValue?: string;
+  variant?: "transparent" | "input" | string;
+  idPrefix?: string;
+  uniqueName?: boolean;
+}
+
+export interface CollectionToolbarProps {
+  search?: CollectionToolbarSearchConfig;
+  filters?: CollectionToolbarFiltersConfig;
+  chips?: CollectionToolbarChipsConfig;
+  right?: ReactNode;
+  footer?: ReactNode;
+  labels?: Record<string, unknown>;
+  leftFlex?: number;
+  rightFlex?: number;
+  rightAlignSelf?: string;
+  gap?: string;
+  /** Optional stable prefix used to generate unique child input/select names. */
+  idPrefix?: string;
+  /** Append a per-toolbar suffix to child input/select names. Default true. */
+  uniqueNames?: boolean;
+}
+
 export interface CrmLookupSelectProps {
   objectType: "contact" | "contacts" | "company" | "companies" | "deal" | "deals" | string;
   properties?: string[];
@@ -267,6 +400,10 @@ export interface IconProps {
   size?: IconSize;
   /** Accessible label for screen readers. */
   screenReaderText?: string;
+  /** Passed through to native HubSpot Icon when possible; fallback Image also receives it. */
+  onClick?: (...args: unknown[]) => void;
+  /** Passed through to native HubSpot Icon when possible; fallback Image also receives it. */
+  href?: string | { url: string; external?: boolean };
 }
 
 export interface IconDataUriResult {
@@ -297,6 +434,12 @@ export declare function svgToIconEntry(raw: string): IconEntry;
 
 export declare function AutoTag(props: AutoTagProps): ReactNode;
 export declare function AutoStatusTag(props: AutoStatusTagProps): ReactNode;
+export declare function ActiveFilterChips(props: ActiveFilterChipsProps): ReactNode;
+export declare function CollectionCount(props: CollectionCountProps): ReactNode;
+export declare function formatCollectionCount(params: FormatCollectionCountParams): ReactNode;
+export declare function CollectionFilterControl(props: CollectionFilterControlProps): ReactNode;
+export declare function CollectionSortSelect(props: CollectionSortSelectProps): ReactNode;
+export declare function CollectionToolbar(props: CollectionToolbarProps): ReactNode;
 export declare function SectionHeader(props: SectionHeaderProps): ReactNode;
 export declare function KeyValueList(props: KeyValueListProps): ReactNode;
 export declare function AvatarStack(props: AvatarStackProps): ReactNode;

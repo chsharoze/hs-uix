@@ -1,107 +1,31 @@
-export { DataTable } from "./packages/datatable/index";
-export type {
-  DataTableProps,
-  DataTableColumn,
-  DataTableFilterConfig,
-  DataTableFilterType,
-  DataTableGroupBy,
-  DataTableSortDirection,
-  DataTableSortObject,
-  DataTableParams,
-  DataTableOption,
-  DataTableDateValue,
-  DataTableTimeValue,
-  DataTableDateRangeValue,
-  DataTableWidth,
-  DataTableColumnWidth,
-  DataTableEditMode,
-  DataTableEditType,
-  DataTableSelectionAction,
-  DataTableRowAction,
-  DataTableSelectAllRequestPayload,
-  DataTableLabels,
-  DataTableSelectionBarRenderContext,
-  DataTableEmptyStateRenderContext,
-  DataTableLoadingStateRenderContext,
-  DataTableErrorStateRenderContext,
-} from "./packages/datatable/index";
+// Each component module prefixes its type names (DataTable*, Kanban*, Feed*,
+// Calendar*, FormBuilder*) and its value exports are unique, so `export *` is
+// collision-free and keeps this root barrel automatically in sync with every
+// type each component declares — no hand-maintained list to fall out of date.
+export * from "./src/datatable/index";
+export * from "./src/kanban/index";
+export * from "./src/feed/index";
+export * from "./src/calendar/index";
+export * from "./src/form/index";
 
-export { Kanban, KanbanCardActions } from "./packages/kanban/index";
-export type {
-  KanbanProps,
-  KanbanStage,
-  KanbanStageMeta,
-  KanbanStageVariant,
-  KanbanStageControlMode,
-  KanbanCardField,
-  KanbanCardFieldPlacement,
-  KanbanCardDensity,
-  KanbanCardBodyMode,
-  KanbanCardDividers,
-  KanbanCardRenderContext,
-  KanbanFilterConfig,
-  KanbanFilterType,
-  KanbanSortOption,
-  KanbanSelectionAction,
-  KanbanCardAction,
-  KanbanCardActionsProps,
-  KanbanLabels,
-  KanbanParams,
-  KanbanStageChangeResult,
-  KanbanMetricItem,
-  KanbanSelectionBarRenderContext,
-  KanbanEmptyStateRenderContext,
-  KanbanLoadingStateRenderContext,
-  KanbanErrorStateRenderContext,
-  KanbanTransitionPromptContext,
-  KanbanOption,
-} from "./packages/kanban/index";
-
-export { Feed } from "./packages/feed/index";
-export type {
-  FeedAction,
-  FeedActor,
-  FeedContainer,
-  FeedEmptyStateRenderContext,
-  FeedErrorStateRenderContext,
-  FeedField,
-  FeedFieldType,
-  FeedItem,
-  FeedLabels,
-  FeedLoadingStateRenderContext,
-  FeedPlacement,
-  FeedProps,
-} from "./packages/feed/index";
-
-export { FormBuilder, useFormPrefill } from "./packages/form/index";
-export type {
-  FormBuilderProps,
-  FormBuilderField,
-  FormBuilderFieldType,
-  FormBuilderOption,
-  FormBuilderDateValue,
-  FormBuilderTimeValue,
-  FormBuilderDateTimeValue,
-  FormBuilderValidationContext,
-  FormBuilderValidatorResult,
-  FormBuilderValidator,
-  FormBuilderDependsOnConfig,
-  FormBuilderRepeaterProps,
-  FormBuilderGroupOptions,
-  FormBuilderLabels,
-  FormBuilderAlertConfig,
-  FormBuilderButtonsRenderContext,
-  FormBuilderSubmitAlign,
-  FormBuilderLayout,
-  FormBuilderLayoutEntry,
-  FormBuilderSection,
-  FormBuilderSectionContext,
-  FormBuilderStep,
-  FormBuilderRef,
-  FieldTypePlugin,
-} from "./packages/form/index";
-
-export { AutoTag, AutoStatusTag, KeyValueList, SectionHeader, Spinner, SPINNERS, SPINNER_NAMES, gridToBraille, makeGrid } from "./common-components";
+export {
+  ActiveFilterChips,
+  AutoTag,
+  AutoStatusTag,
+  CollectionCount,
+  CollectionFilterControl,
+  CollectionSortSelect,
+  CollectionToolbar,
+  CrmLookupSelect,
+  formatCollectionCount,
+  KeyValueList,
+  SectionHeader,
+  Spinner,
+  SPINNERS,
+  SPINNER_NAMES,
+  gridToBraille,
+  makeGrid,
+} from "./common-components";
 export {
   Icon,
   ICON_NAMES,
@@ -131,8 +55,11 @@ export {
   DEFAULT_SVG_FONT_WEIGHT,
 } from "./common-components";
 export {
+  buildActiveFilterChips,
+  buildCrmSearchConfig,
   buildOptions,
   createStatusTagSortComparator,
+  crmSearchResultToOption,
   CrmDataTable,
   CrmKanban,
   findOptionLabel,
@@ -143,8 +70,21 @@ export {
   formatPercentage,
   getAutoTagVariant,
   getAutoStatusTagVariant,
+  getEmptyFilterValue,
+  getEmptyFilterValues,
+  isFilterActive,
+  makeCrmSearchMultiSelectField,
+  makeCrmSearchSelectField,
+  normalizeCrmSearchRecord,
+  normalizeCrmSearchRows,
+  resetFilterValues,
   resolveCrmObjectType,
+  searchRows,
+  filterRows,
   sumBy,
+  toStableKey,
+  useCrmSearchDataSource,
+  useCrmSearchOptions,
 } from "./utils";
 export type {
   AutoTagOptions,
@@ -156,9 +96,16 @@ export type {
   CrmKanbanProps,
   CrmSearchDataSource,
   CrmSearchConfigOptions,
+  CrmSearchOptionsDataSource,
+  CrmSearchPagination,
   CrmSearchParams,
+  QueryFilterConfig,
+  ActiveFilterChip,
+  FilterResetOptions,
+  BuildActiveFilterChipsOptions,
 } from "./utils";
 export type {
+  ActiveFilterChipsProps,
   AutoTagProps,
   AutoStatusTagProps,
   AvatarStackDataUriResult,
@@ -172,6 +119,10 @@ export type {
   IconSize,
   IconDataUriResult,
   IconDataUriOptions,
+  CollectionCountProps,
+  CollectionFilterControlProps,
+  CollectionSortSelectProps,
+  CollectionToolbarProps,
   CrmLookupSelectProps,
   DateDirectionLabels,
   DatePresetOption,

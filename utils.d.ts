@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
-import type { DataTableProps, DataTableColumn } from "./packages/datatable/index";
-import type { KanbanProps } from "./packages/kanban/index";
+import type { DataTableProps, DataTableColumn } from "./src/datatable/index";
+import type { KanbanProps } from "./src/kanban/index";
 
 export type AutoStatusTagVariant = "default" | "success" | "warning" | "danger" | "info";
 export type AutoTagVariant = "default" | "success" | "warning" | "error" | "info";
@@ -38,6 +38,46 @@ export interface BuiltOption {
   value: unknown;
   description?: unknown;
 }
+
+export interface QueryFilterConfig<Row = Record<string, unknown>> {
+  name: string;
+  type?: "select" | "multiselect" | "dateRange" | string;
+  label?: string;
+  placeholder?: string;
+  chipLabel?: string;
+  emptyValue?: unknown;
+  options?: Array<{ label: unknown; value: unknown }>;
+  filterFn?: (row: Row, value: unknown) => boolean;
+}
+
+export interface ActiveFilterChip {
+  key: string;
+  label: unknown;
+}
+
+export interface FilterResetOptions {
+  getEmptyValue?: (filter: QueryFilterConfig) => unknown;
+  fallbackEmptyValue?: unknown;
+}
+
+export interface BuildActiveFilterChipsOptions {
+  isFilterActive?: (filter: QueryFilterConfig, value: unknown) => boolean;
+  formatDate?: (value: unknown) => string;
+  dateFromPrefix?: string;
+  dateToPrefix?: string;
+  dateJoiner?: string;
+}
+
+export declare function getEmptyFilterValue(filter: QueryFilterConfig): unknown;
+export declare function getEmptyFilterValues(filters?: QueryFilterConfig[], options?: FilterResetOptions): Record<string, unknown>;
+export declare function resetFilterValues(filters?: QueryFilterConfig[], values?: Record<string, unknown>, key?: string, options?: FilterResetOptions): Record<string, unknown>;
+export declare function isFilterActive(filter: QueryFilterConfig, value: unknown): boolean;
+export declare function formatDateChip(dateObj: unknown): string;
+export declare function dateToTimestamp(dateObj: unknown): number | null;
+export declare function buildActiveFilterChips(filters?: QueryFilterConfig[], values?: Record<string, unknown>, options?: BuildActiveFilterChipsOptions): ActiveFilterChip[];
+export declare function toStableKey(value: unknown): string;
+export declare function filterRows<Row = Record<string, unknown>>(rows: Row[], filters?: QueryFilterConfig<Row>[], values?: Record<string, unknown>): Row[];
+export declare function searchRows<Row = Record<string, unknown>>(rows: Row[], term: string | null | undefined, fields?: string[], opts?: { fuzzy?: boolean; fuzzyOptions?: Record<string, unknown> }): Row[];
 
 export declare function getAutoTagVariant(value: unknown, options?: AutoTagOptions): AutoTagVariant;
 export declare function getAutoStatusTagVariant(value: unknown, options?: AutoStatusTagOptions): AutoStatusTagVariant;
@@ -115,10 +155,22 @@ export interface CrmSearchOptionOptions<Row = Record<string, unknown>> {
   mapOption?: (row: Row) => BuiltOption;
 }
 
+export interface CrmSearchPagination {
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  currentPage: number;
+  pageSize: number;
+  nextPage: () => void;
+  previousPage: () => void;
+  reset: () => void;
+}
+
 export interface CrmSearchDataSource<Row = Record<string, unknown>> {
   data: Row[];
   rows: Row[];
   response: unknown;
+  pagination?: CrmSearchPagination;
+  hasMore: boolean;
   loading: boolean;
   isLoading: boolean;
   error: string | boolean;
@@ -136,7 +188,7 @@ export interface CrmSearchFormField<Field = Record<string, unknown>> extends Rec
   loading?: boolean;
 }
 
-export interface CrmDataTableProps<Row = Record<string, unknown>> extends Omit<DataTableProps<Row>, "data" | "loading" | "error" | "columns" | "searchValue" | "onParamsChange"> {
+export interface CrmDataTableProps<Row = Record<string, unknown>> extends Omit<DataTableProps<Row>, "data" | "loading" | "error" | "columns" | "searchValue" | "onParamsChange" | "totalCount" | "clientTotalCount"> {
   objectType: "contact" | "contacts" | "company" | "companies" | "deal" | "deals" | string;
   properties?: string[];
   columns?: DataTableColumn<Row>[];

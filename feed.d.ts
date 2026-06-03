@@ -1,1 +1,1 @@
-export * from "./packages/feed/index";
+export * from "./src/feed/index";

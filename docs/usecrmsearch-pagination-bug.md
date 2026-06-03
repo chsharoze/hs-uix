@@ -1,5 +1,7 @@
 # Bug: `useCrmSearch` `pagination.nextPage()` skips a page (off-by-one offset)
 
+> **Status:** Fixed by HubSpot. Heather Weaver confirmed a fix was released after this report. Keep this note as historical context for why `hs-uix` uses stable CRM sorts and exposes native `pagination` / `hasMore` from the lower-level CRM search adapters.
+
 ## Summary
 `useCrmSearch().pagination.nextPage()` advances the result cursor one page too far.
 After page 1 (offset 0), a single `nextPage()` returns the rows at offset

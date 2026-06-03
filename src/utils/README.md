@@ -10,6 +10,7 @@ Pure helper functions for formatting, mapping, guards, and lightweight data tran
 - `collections.js` — tiny array helpers (`sumBy`)
 - `tagVariants.js` — map free-form status strings to semantic tag variants, plus sort comparators keyed by variant
 - `viewAdapters.js` — shape transforms between DataTable columns and Kanban cardFields (power a single "same data, different view" toggle)
+- `query.js` — shared collection query helpers: empty filter values, filter reset, active-filter chips, filtering, and search
 - `crmSearchAdapters.js` — CRM-bound data components (`CrmDataTable`, `CrmKanban`) plus the lower-level CRM search hooks and config builders behind them
 
 ## Purpose
@@ -44,6 +45,12 @@ import {
   createStatusTagSortComparator,
   // viewAdapters
   deriveCardFieldsFromColumns,
+  // query
+  buildActiveFilterChips,
+  resetFilterValues,
+  getEmptyFilterValues,
+  filterRows,
+  searchRows,
   // crmSearchAdapters
   CrmDataTable,
   CrmKanban,
@@ -365,7 +372,52 @@ const CARD_FIELDS = deriveCardFieldsFromColumns(COLUMNS, {
 - **Port `renderCell` that assumes a table context** (e.g. returns `<TableCell>` elements). If your renderer targets a `<td>`-shaped cell, it'll need a card-compatible version. Plain value formatters and `<Link>` / `<Tag>` / `<Text>` renderers carry over fine.
 - **Adapt sort.** DataTable's per-column sort (click column header) and Kanban's board-wide `sortOptions` are different models — you still maintain a separate `sortOptions` array for Kanban.
 
-See also: [Kanban SPEC § cardFields](../../packages/kanban/SPEC.md#44-card-rendering--declarative-vs-render-prop).
+See also: [Kanban SPEC § cardFields](../kanban/SPEC.md#44-card-rendering--declarative-vs-render-prop).
+
+---
+
+## query.js
+
+Shared query helpers for collection-style views. These are the same primitives used internally by DataTable, Kanban, Calendar, and Feed's active-filter chips.
+
+```js
+import {
+  buildActiveFilterChips,
+  resetFilterValues,
+  getEmptyFilterValues,
+  filterRows,
+  searchRows,
+} from "hs-uix/utils";
+
+const [filterValues, setFilterValues] = useState(() => getEmptyFilterValues(filters));
+const activeChips = buildActiveFilterChips(filters, filterValues);
+
+const clearFilter = (key) => {
+  setFilterValues((prev) => resetFilterValues(filters, prev, key));
+};
+
+const visibleRows = searchRows(
+  filterRows(rows, filters, filterValues),
+  search,
+  ["name", "email"]
+);
+```
+
+### `getEmptyFilterValues(filters, opts?)`
+
+Builds a `{ [filter.name]: emptyValue }` object from a filter config list. Defaults are `""` for select filters, `[]` for multiselect, and `{ from: null, to: null }` for date ranges. A filter-level `emptyValue` overrides the select default; pass `getEmptyValue` for broader custom dialects such as Feed's legacy `"all"` empty select value.
+
+### `resetFilterValues(filters, values, key, opts?)`
+
+Returns a new values object with either one filter reset or all filters reset when `key === "all"`.
+
+### `buildActiveFilterChips(filters, values, opts?)`
+
+Returns `[{ key, label }]` descriptors for active filters. Supports select labels, multiselect joined labels, date range labels, custom active detection, and custom date formatting.
+
+### `filterRows(rows, filters, values)` / `searchRows(rows, term, fields, opts?)`
+
+Pure in-memory filtering/search helpers used by DataTable, Kanban, and Calendar. Feed intentionally keeps its own row pipeline because it supports path/accessor-based values and string-coercing equality.
 
 ---
 
@@ -375,7 +427,9 @@ CRM-bound data components and the search plumbing behind them. `CrmDataTable` an
 
 ### Pagination model
 
-By default both components **fetch one batch (`pageLength`, default 100) and do search / sort / filter / pagination client-side** — a single request, no refetch per interaction, and pagination "just works" via in-memory slicing. When the result set exceeds the batch they show a "first N of M" note rather than silently showing a partial view. Pass **`serverSide`** to opt into cursor pagination for very large datasets (each search/filter/sort runs as a fresh server query). A built-in sort translator maps the active column/board sort to CRM `sorts` (honoring `propertyMap`) in server mode, so you don't hand-write a `sortMap`.
+By default both components **fetch one batch (`pageLength`, default 100) and do search / sort / filter / pagination client-side** — a single request, no refetch per interaction, and pagination "just works" via in-memory slicing. When the result set exceeds the batch they show a "first N of M" note rather than silently showing a partial view. Pass **`serverSide`** to force search/filter/sort to run as fresh CRM queries from the first render. A built-in sort translator maps the active column/board sort to CRM `sorts` (honoring `propertyMap`) in server-query mode, so you don't hand-write a `sortMap`.
+
+HubSpot fixed the `useCrmSearch().pagination.nextPage()` offset issue in platform `2026.03`; the lower-level hooks now also expose `pagination` / `hasMore` from the native response for custom views. `CrmDataTable` now uses that native cursor to lazy-load additional batches: with `pageLength={100}` and `pageSize={10}`, clicking table page 11 fetches the next CRM batch and appends it before rendering that page. `CrmKanban` exposes the same batch loading through its column `Load more` affordance when more CRM results are available.
 
 > Note: these are JSX components that live in `utils` because they're CRM-data adapters; the underlying `useCrmSearch*` hooks live here too.
 
@@ -425,7 +479,7 @@ import { CrmKanban } from "hs-uix/utils";
 | `objectType` | string | — | CRM object to query (`"contact"`, `"company"`, `"deal"`, or any object type id/name). |
 | `properties` | `string[]` | — | CRM properties to fetch. |
 | `pageLength` | number | `100` | Batch size fetched per query. |
-| `serverSide` | boolean | `false` | Opt into cursor pagination for large datasets instead of the client-side batch model. |
+| `serverSide` | boolean | `false` | Force search/filter/sort to refetch from CRM instead of waiting until the first batch is capped. Table/board pagination stays client-side over loaded rows, and loads the next CRM cursor batch as needed. |
 | `autoFilters` | `boolean \| string[] \| { fields? }` | — | Auto-generate select filters from properties (optionally capped by `autoFilterMaxOptions`). |
 | `propertyMap` | `Record<string,string>` | — | Map your field names to CRM property names (used for sorts/filters). |
 | `filterMap` / `sortMap` | fn | — | Advanced overrides for translating filters/sorts to CRM config. |
@@ -439,7 +493,7 @@ import { CrmKanban } from "hs-uix/utils";
 
 If you need to drive a custom view, the hooks and helpers are exported directly:
 
-- `useCrmSearchDataSource(params, options)` — the hook both components use; returns `{ data, loading, error, totalCount, ... }` for a CRM search.
+- `useCrmSearchDataSource(params, options)` — the hook both components use; returns `{ data, loading, error, totalCount, pagination, hasMore, ... }` for a CRM search.
 - `useCrmSearchOptions(params, options)` — CRM search shaped into `{ label, value }` options for a `Select`.
 - `buildCrmSearchConfig(params, options)` — build the CRM search request config (appends a stable `hs_object_id` sort tiebreaker so cursor paging is deterministic).
 - `normalizeCrmSearchRecord` / `normalizeCrmSearchRows` — flatten raw CRM responses into plain rows.

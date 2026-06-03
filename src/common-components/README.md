@@ -9,6 +9,7 @@ Reusable UI wrappers built on top of HubSpot UI Extensions primitives.
 - `AvatarStack` — overlapping circular avatars (letters or image URLs)
 - `Icon` — superset of HubSpot's native `<Icon>`: custom glyphs, any CSS color, pixel sizes
 - `CrmLookupSelect` — CRM-backed `Select` / `MultiSelect` with live, debounced search
+- `CollectionToolbar`, `CollectionFilterControl`, `ActiveFilterChips`, `CollectionSortSelect`, `CollectionCount` — shared search/filter/sort/count primitives used by DataTable, Kanban, Feed, and Calendar
 - `SectionHeader` — title + optional description row
 - `KeyValueList` — vertical list of label/value rows
 - `StyledText` — SVG-rendered text with rotation, custom colors, pill backgrounds
@@ -37,6 +38,8 @@ import {
   AvatarStack,
   Icon,
   CrmLookupSelect,
+  CollectionToolbar,
+  CollectionSortSelect,
   SectionHeader,
   KeyValueList,
   StyledText,
@@ -50,6 +53,78 @@ Or from the root package:
 ```js
 import { AvatarStack, Icon, StyledText } from "hs-uix";
 ```
+
+---
+
+## Collection controls
+
+The collection controls are the low-level toolbar primitives used internally by `DataTable`, `Kanban`, `Feed`, and `Calendar`. Use them when you are building a custom collection view but want the same search/filter/sort/count UX as the packaged components.
+
+```jsx
+import {
+  CollectionToolbar,
+  CollectionSortSelect,
+} from "hs-uix/common-components";
+import {
+  buildActiveFilterChips,
+  resetFilterValues,
+} from "hs-uix/utils";
+
+const activeChips = buildActiveFilterChips(filters, filterValues);
+
+<CollectionToolbar
+  search={{
+    name: "deals-search",
+    value: search,
+    placeholder: "Search deals...",
+    onChange: setSearch,
+  }}
+  filters={{
+    items: filters,
+    values: filterValues,
+    inlineLimit: 2,
+    onChange: (name, value) => setFilterValues((prev) => ({ ...prev, [name]: value })),
+  }}
+  chips={{
+    items: activeChips,
+    onRemove: (key) => setFilterValues((prev) => resetFilterValues(filters, prev, key)),
+  }}
+  right={
+    <CollectionSortSelect
+      value={sort}
+      options={sortOptions}
+      placeholder="Sort"
+      onChange={setSort}
+    />
+  }
+/>
+```
+
+### Design notes
+
+- These primitives are **controlled**. They render controls and emit changes; callers own query state and data filtering.
+- `CollectionToolbar` automatically appends a per-toolbar suffix to child input/select names using React `useId()`. This prevents collisions when multiple tables, boards, feeds, or calendars render in the same extension. Pass `idPrefix` for a stable suffix or `uniqueNames={false}` to opt out.
+- The right-side slot defaults to `alignSelf="end"`, so counts/sort controls sit on the lowest toolbar row. This keeps them aligned with active filter chips when chips are visible.
+- `CollectionToolbar` accepts `leftFlex` / `rightFlex` for view-specific space allocation. Calendar uses a 3/2 split (60/40) by default because its right side contains Today, previous/next, and view controls.
+
+### Shared filter config vocabulary
+
+```js
+{
+  name: "stage",
+  type: "select", // "select" | "multiselect" | "dateRange"
+  label: "Stage",
+  placeholder: "All stages",
+  chipLabel: "Stage",
+  emptyValue: "",
+  options: [
+    { label: "Open", value: "open" },
+    { label: "Closed", value: "closed" },
+  ],
+}
+```
+
+`CollectionFilterControl` also supports `includeAll`, `allValue`, `allLabel`, `fromLabel`, and `toLabel` for advanced cases. Prefer `emptyValue` for new filter configs; the library default is `""` for select filters. Feed keeps its legacy `"all"` empty value internally for compatibility, but custom shared configs should generally use `emptyValue: ""`.
 
 ---
 
@@ -232,7 +307,7 @@ A CRM-backed `Select` (or `MultiSelect` when `multiple`) that searches live as t
 
 ![CrmLookupSelect live search](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/common-components/assets/crmLookUp.gif)
 
-A picked option stays valid after the live results change (the component remembers selected options internally), it shows `loadingOption` during the debounce window — not just the in-flight request — and only shows `noResultsOption` once a query has settled, so it never flashes "no results" while you're still typing.
+A picked option stays valid after the live results change (the component remembers selected options internally), it shows `loadingOption` during the debounce window — not just the in-flight request — and only shows `noResultsOption` once a query has settled, so it never flashes "no results" while you're still typing. It fetches the first `pageLength` matches for each query; for custom lookup UIs that need native cursor controls, use `useCrmSearchOptions`, which exposes `pagination` / `hasMore` from HubSpot's fixed `useCrmSearch` response.
 
 ```jsx
 import { CrmLookupSelect } from "hs-uix/common-components";

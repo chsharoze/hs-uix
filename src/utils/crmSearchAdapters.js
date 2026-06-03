@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrmSearch, Flex, Text } from "@hubspot/ui-extensions";
-import { DataTable } from "../../packages/datatable/src/DataTable.jsx";
-import { Kanban } from "../../packages/kanban/src/Kanban.jsx";
+import { DataTable } from "../datatable/DataTable.jsx";
+import { Kanban } from "../kanban/Kanban.jsx";
 import { getByPath } from "./objectPath.js";
 
 const EMPTY_ARRAY = [];
@@ -126,7 +126,7 @@ export const buildCrmSearchConfig = (params = EMPTY_OBJECT, options = EMPTY_OBJE
     pageLength: pageLength ?? params.pageLength ?? baseConfig.pageLength,
   };
 
-  if (propertyMap && Object.keys(propertyMap).length && params.filters) {
+  if (!filterMap && propertyMap && Object.keys(propertyMap).length && params.filters) {
     // Lightweight default filter mapping for simple DataTable/Kanban select filters.
     // Anything complex should use filterMap for full HubSpot CRM search syntax.
     const filters = Object.entries(params.filters)
@@ -175,6 +175,8 @@ export const useCrmSearchDataSource = (params = EMPTY_OBJECT, options = EMPTY_OB
       data: rows,
       rows,
       response,
+      pagination: response?.pagination,
+      hasMore: response?.pagination?.hasNextPage ?? response?.hasMore ?? false,
       loading: typeof loading === "function" ? loading(response) : loading ?? !!response?.isLoading,
       isLoading: typeof loading === "function" ? loading(response) : loading ?? !!response?.isLoading,
       error: typeof error === "function" ? error(response) : error ?? coerceError(response?.error),
@@ -296,6 +298,39 @@ export const resolveCrmObjectType = (objectType) =>
 const DEFAULT_CRM_FORMAT = { propertiesToFormat: "all" };
 const defaultCrmMapRecord = (record) => ({ objectId: record.objectId, ...record.properties });
 
+const stableStringify = (value) => {
+  const normalize = (item) => {
+    if (Array.isArray(item)) return item.map(normalize);
+    if (isPlainObject(item)) {
+      return Object.keys(item).sort().reduce((acc, key) => {
+        acc[key] = normalize(item[key]);
+        return acc;
+      }, {});
+    }
+    if (typeof item === "function") return item.name || "[function]";
+    return item;
+  };
+  try {
+    return JSON.stringify(normalize(value));
+  } catch {
+    return String(value);
+  }
+};
+
+const appendUniqueRows = (previousRows, nextRows, rowIdField) => {
+  if (!previousRows.length) return nextRows || EMPTY_ARRAY;
+  if (!nextRows?.length) return previousRows;
+  const seen = new Set(previousRows.map((row) => getByPath(row, rowIdField) ?? row?.objectId ?? row?.id));
+  const additions = nextRows.filter((row) => {
+    const id = getByPath(row, rowIdField) ?? row?.objectId ?? row?.id;
+    if (id == null) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  return additions.length ? [...previousRows, ...additions] : previousRows;
+};
+
 // Default sort translator: maps the active table sort ({ field, direction }) to
 // CRM `sorts`, honoring propertyMap for renamed columns. Users only need a
 // custom sortMap for non-trivial cases.
@@ -315,9 +350,9 @@ export const CrmDataTable = ({
   // Hybrid model: fetch ONE batch and do everything client-side while the whole
   // result set fits in the batch (no refetch). Once a fetch comes back capped
   // (more matches than the batch), search / filter / sort start refetching a
-  // fresh batch server-side so they reach the whole dataset — pagination always
-  // stays client-side (the broken useCrmSearch cursor is never used). Set
-  // `serverSide` to force server-side querying from the first render.
+  // fresh batch server-side so they reach the whole dataset. Pagination stays
+  // client-side over the fetched batch; `serverSide` forces server-side querying
+  // from the first render.
   serverSide = false,
   filters,
   autoFilters = false,
@@ -357,7 +392,7 @@ export const CrmDataTable = ({
   const resolvedMapRecord = mapRecord || defaultCrmMapRecord;
 
   // Stable options object so the underlying useCrmSearch config doesn't churn
-  // every render (which would otherwise reset cursor pagination).
+  // every render (which would otherwise reset the CRM search request state).
   const dataSourceOptions = useMemo(
     () => ({
       objectType: resolveCrmObjectType(objectType),
@@ -381,42 +416,77 @@ export const CrmDataTable = ({
   const effectiveParams = serverQuerying ? params : EMPTY_CRM_PARAMS;
 
   const dataSource = useCrmSearchDataSource(effectiveParams, dataSourceOptions);
+  const queryKey = useMemo(
+    () => stableStringify({ effectiveParams, objectType, properties: resolvedProperties, pageLength }),
+    [effectiveParams, objectType, resolvedProperties, pageLength]
+  );
+  const [accumulatedRows, setAccumulatedRows] = useState(EMPTY_ARRAY);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const lastQueryKeyRef = useRef(queryKey);
+  const loadedRows = accumulatedRows.length ? accumulatedRows : dataSource.data;
 
   useEffect(() => {
-    if (!serverQuerying && typeof dataSource.totalCount === "number" && dataSource.totalCount > dataSource.data.length) {
+    if (lastQueryKeyRef.current !== queryKey) {
+      lastQueryKeyRef.current = queryKey;
+      setAccumulatedRows(dataSource.data);
+      return;
+    }
+    const currentPage = dataSource.pagination?.currentPage || 1;
+    setAccumulatedRows((prev) => (
+      currentPage <= 1 ? dataSource.data : appendUniqueRows(prev, dataSource.data, rowIdField)
+    ));
+  }, [queryKey, dataSource.data, dataSource.pagination?.currentPage, rowIdField]);
+
+  useEffect(() => {
+    if (!serverQuerying && typeof dataSource.totalCount === "number" && dataSource.totalCount > loadedRows.length) {
       setServerQuerying(true);
     }
-  }, [serverQuerying, dataSource.totalCount, dataSource.data.length]);
+  }, [serverQuerying, dataSource.totalCount, loadedRows.length]);
+
+  const ensurePageLoaded = useCallback((page) => {
+    const pageNumber = Number(page) || 1;
+    const requiredRows = pageNumber * pageSize;
+    if (requiredRows <= loadedRows.length) return;
+    if (!dataSource.hasMore || dataSource.loading || dataSource.response?.isRefetching) return;
+    dataSource.pagination?.nextPage?.();
+  }, [pageSize, loadedRows.length, dataSource.hasMore, dataSource.loading, dataSource.response, dataSource.pagination]);
+
+  useEffect(() => {
+    ensurePageLoaded(requestedPage);
+  }, [requestedPage, ensurePageLoaded]);
 
   const generatedFilters = useMemo(
     () => buildAutoFiltersFromRows({
-      rows: dataSource.data,
+      rows: loadedRows,
       fields: autoFilterFields,
       labelsRef: autoFilterLabelsRef,
       maxOptions: autoFilterMaxOptions,
     }),
-    [dataSource.data, autoFilterFields, autoFilterMaxOptions]
+    [loadedRows, autoFilterFields, autoFilterMaxOptions]
   );
   const resolvedFilters = filters || generatedFilters;
 
-  // Always a client-side table (pagination in-memory — never the cursor). We
-  // only LISTEN for search / filter / sort via onParamsChange; when
+  // Always a client-side table (pagination in-memory over the fetched batch).
+  // We only LISTEN for search / filter / sort via onParamsChange; when
   // server-querying, storing them refetches a fresh batch, otherwise it's a
   // harmless no-op the in-memory table already handled.
   const table = React.createElement(DataTable, {
     title: title || `${prettifyPropertyName(objectType)} records`,
-    data: dataSource.data,
+    data: loadedRows,
     loading: dataSource.loading || dataSource.response?.isRefetching,
     error: dataSource.error,
     columns: resolvedColumns,
     rowIdField,
     pageSize,
+    clientTotalCount: dataSource.totalCount,
     filters: resolvedFilters,
     searchFields: resolvedSearchFields,
     searchPlaceholder: searchPlaceholder || `Search ${prettifyPropertyName(objectType).toLowerCase()}...`,
     searchDebounce: 300,
     onParamsChange: (next) => {
       setParams((prev) => ({ ...prev, search: next.search, filters: next.filters, sort: next.sort }));
+      setRequestedPage(next.page || 1);
+      ensurePageLoaded(next.page);
     },
     ...dataTableProps,
     ...props,
@@ -425,7 +495,7 @@ export const CrmDataTable = ({
   // When the current query matches more than the batch, say so rather than
   // silently showing a partial view. (Server-querying narrows via search/filter.)
   const total = dataSource.totalCount;
-  const capped = typeof total === "number" && total > dataSource.data.length;
+  const capped = typeof total === "number" && total > loadedRows.length;
   if (!capped) return table;
 
   return React.createElement(
@@ -434,7 +504,9 @@ export const CrmDataTable = ({
     React.createElement(
       Text,
       { variant: "microcopy" },
-      `Showing the first ${dataSource.data.length} of ${total} matching. Refine your search or filters to narrow the results.`
+      dataSource.hasMore
+        ? `Loaded ${loadedRows.length} of ${total} matching. Use the table pagination to load more CRM results.`
+        : `Showing ${loadedRows.length} of ${total} matching. Refine your search or filters to narrow the results.`
     ),
     table
   );
@@ -472,6 +544,8 @@ export const CrmKanban = ({
   format = DEFAULT_CRM_FORMAT,
   mapRecord,
   rowIdField = "objectId",
+  stageMeta,
+  onLoadMore,
   kanbanProps = EMPTY_OBJECT,
   ...props
 }) => {
@@ -511,26 +585,54 @@ export const CrmKanban = ({
 
   // Sticky auto-switch (same as CrmDataTable): once the dataset exceeds one
   // batch, feed live search / filter to the CRM query so they reach the whole
-  // dataset. Sort + per-column pagination always stay client-side.
+  // dataset. Sort + per-column pagination stay client-side over the fetched batch.
   const [serverQuerying, setServerQuerying] = useState(!!serverSide);
   const effectiveParams = serverQuerying ? params : EMPTY_CRM_PARAMS;
 
   const dataSource = useCrmSearchDataSource(effectiveParams, dataSourceOptions);
+  const queryKey = useMemo(
+    () => stableStringify({ effectiveParams, objectType, properties: resolvedProperties, pageLength }),
+    [effectiveParams, objectType, resolvedProperties, pageLength]
+  );
+  const [accumulatedRows, setAccumulatedRows] = useState(EMPTY_ARRAY);
+  const lastQueryKeyRef = useRef(queryKey);
+  const loadedRows = accumulatedRows.length ? accumulatedRows : dataSource.data;
 
   useEffect(() => {
-    if (!serverQuerying && typeof dataSource.totalCount === "number" && dataSource.totalCount > dataSource.data.length) {
+    if (lastQueryKeyRef.current !== queryKey) {
+      lastQueryKeyRef.current = queryKey;
+      setAccumulatedRows(dataSource.data);
+      return;
+    }
+    const currentPage = dataSource.pagination?.currentPage || 1;
+    setAccumulatedRows((prev) => (
+      currentPage <= 1 ? dataSource.data : appendUniqueRows(prev, dataSource.data, rowIdField)
+    ));
+  }, [queryKey, dataSource.data, dataSource.pagination?.currentPage, rowIdField]);
+
+  useEffect(() => {
+    if (!serverQuerying && typeof dataSource.totalCount === "number" && dataSource.totalCount > loadedRows.length) {
       setServerQuerying(true);
     }
-  }, [serverQuerying, dataSource.totalCount, dataSource.data.length]);
+  }, [serverQuerying, dataSource.totalCount, loadedRows.length]);
+
+  const handleLoadMore = useCallback((stage) => {
+    if (onLoadMore) {
+      onLoadMore(stage);
+      return;
+    }
+    if (!dataSource.hasMore || dataSource.loading || dataSource.response?.isRefetching) return;
+    dataSource.pagination?.nextPage?.();
+  }, [onLoadMore, dataSource.hasMore, dataSource.loading, dataSource.response, dataSource.pagination]);
 
   const generatedFilters = useMemo(
     () => buildAutoFiltersFromRows({
-      rows: dataSource.data,
+      rows: loadedRows,
       fields: autoFilterFields,
       labelsRef: autoFilterLabelsRef,
       maxOptions: autoFilterMaxOptions,
     }),
-    [dataSource.data, autoFilterFields, autoFilterMaxOptions]
+    [loadedRows, autoFilterFields, autoFilterMaxOptions]
   );
   const resolvedFilters = filters || generatedFilters;
 
@@ -539,7 +641,7 @@ export const CrmKanban = ({
   const resolvedStages = useMemo(() => {
     if (stages) return stages;
     const seen = [];
-    for (const row of dataSource.data) {
+    for (const row of loadedRows) {
       const value = typeof groupBy === "function" ? groupBy(row) : row[groupBy];
       if (value != null && value !== "" && !seen.includes(value)) seen.push(value);
     }
@@ -550,19 +652,33 @@ export const CrmKanban = ({
           ? stageLabels(value)
           : (stageLabels && stageLabels[value]) || prettifyPropertyName(String(value)),
     }));
-  }, [stages, stageLabels, dataSource.data, groupBy]);
+  }, [stages, stageLabels, loadedRows, groupBy]);
 
-  // Always a client-side board (per-column pagination, comparator sort — never
-  // the cursor). We listen for search / filter via onParamsChange; when
+  // Always a client-side board (per-column pagination and comparator sort over
+  // the fetched batch). We listen for search / filter via onParamsChange; when
   // server-querying, storing them refetches a fresh batch.
+  const resolvedStageMeta = useMemo(() => {
+    if (stageMeta || !dataSource.hasMore) return stageMeta;
+    return Object.fromEntries(resolvedStages.map((stage) => [
+      stage.value,
+      {
+        hasMore: true,
+        loading: dataSource.loading || dataSource.response?.isRefetching,
+        totalCount: dataSource.totalCount,
+      },
+    ]));
+  }, [stageMeta, dataSource.hasMore, dataSource.loading, dataSource.response, dataSource.totalCount, resolvedStages]);
+
   const board = React.createElement(Kanban, {
     title: title || `${prettifyPropertyName(objectType)} board`,
-    data: dataSource.data,
+    data: loadedRows,
     loading: dataSource.loading || dataSource.response?.isRefetching,
     error: dataSource.error,
     rowIdField,
     groupBy,
     stages: resolvedStages,
+    stageMeta: resolvedStageMeta,
+    onLoadMore: dataSource.hasMore || onLoadMore ? handleLoadMore : undefined,
     filters: resolvedFilters,
     searchFields: resolvedSearchFields,
     searchPlaceholder: searchPlaceholder || `Search ${prettifyPropertyName(objectType).toLowerCase()}...`,
@@ -575,7 +691,7 @@ export const CrmKanban = ({
   });
 
   const total = dataSource.totalCount;
-  const capped = typeof total === "number" && total > dataSource.data.length;
+  const capped = typeof total === "number" && total > loadedRows.length;
   if (!capped) return board;
 
   return React.createElement(
@@ -584,7 +700,9 @@ export const CrmKanban = ({
     React.createElement(
       Text,
       { variant: "microcopy" },
-      `Showing the first ${dataSource.data.length} of ${total} matching. Refine your search or filters to narrow the results.`
+      dataSource.hasMore
+        ? `Loaded ${loadedRows.length} of ${total} matching. Use Load more to fetch more CRM results.`
+        : `Showing ${loadedRows.length} of ${total} matching. Refine your search or filters to narrow the results.`
     ),
     board
   );

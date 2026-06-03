@@ -1,8 +1,8 @@
-export { DataTable } from "../packages/datatable/src/DataTable.jsx";
-export { FormBuilder, useFormPrefill } from "../packages/form/src/FormBuilder.jsx";
-export { Kanban } from "../packages/kanban/src/Kanban.jsx";
-export { KanbanCardActions } from "../packages/kanban/src/KanbanCardActions.jsx";
-export { Feed } from "../packages/feed/src/Feed.jsx";
+export { DataTable } from "./datatable/index.js";
+export { FormBuilder, useFormPrefill } from "./form/index.js";
+export { Kanban, KanbanCardActions } from "./kanban/index.js";
+export { Feed } from "./feed/index.js";
+export { Calendar } from "./calendar/index.js";
 export {
   AutoTag,
   AutoStatusTag,

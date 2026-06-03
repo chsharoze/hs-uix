@@ -15,26 +15,36 @@ npm install hs-uix
 import { DataTable } from "hs-uix/datatable";
 import { FormBuilder } from "hs-uix/form";
 import { Feed } from "hs-uix/feed";
-import { Icon, AutoStatusTag, AutoTag, CrmLookupSelect, KeyValueList, SectionHeader } from "hs-uix/common-components";
+import { Calendar } from "hs-uix/calendar";
+import {
+  Icon,
+  AutoStatusTag,
+  AutoTag,
+  CrmLookupSelect,
+  KeyValueList,
+  SectionHeader,
+  CollectionToolbar,
+} from "hs-uix/common-components";
 import { CrmDataTable, CrmKanban, formatCurrency, formatDate } from "hs-uix/utils";
 
 // or import everything from the root
-import { DataTable, FormBuilder, Icon, AutoStatusTag, AutoTag } from "hs-uix";
+import { DataTable, FormBuilder, Kanban, Feed, Calendar, Icon } from "hs-uix";
 ```
 
-Requires `react` >= 18.0.0 and `@hubspot/ui-extensions` >= 0.12.0 as peer dependencies (already present in any HubSpot UI Extensions project).
+Requires `react` >= 18.0.0 and `@hubspot/ui-extensions` >= 0.14.0 as peer dependencies (already present in any HubSpot UI Extensions project).
 
 ## Components
 
 | Component | Description | Docs |
 |-----------|-------------|------|
-| **DataTable** | Filterable, sortable, paginated table with auto-sized columns, inline editing, row grouping, and more | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/packages/datatable/README.md) |
-| **FormBuilder** | Declarative, config-driven form with validation, multi-step wizards, and 20+ field types | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/packages/form/README.md) |
-| **Kanban** | Stage-based board with filters, sort, headline metrics, card action bars, and DataTable-parity card field config | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/packages/kanban/README.md) |
-| **Feed** | Activity feed / timeline with a standard item shape, date grouping, load-more pagination, and HubSpot-native item regions | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/packages/feed/README.md) |
-| **Common Components** | Thin visual wrappers over HubSpot primitives — `Icon`, `AutoTag`, `AutoStatusTag`, `AvatarStack`, `CrmLookupSelect`, `SectionHeader`, `KeyValueList`, `StyledText` | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/common-components/README.md) |
+| **DataTable** | Filterable, sortable, paginated table with auto-sized columns, inline editing, row grouping, and more | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/datatable/README.md) |
+| **FormBuilder** | Declarative, config-driven form with validation, multi-step wizards, and 20+ field types | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/form/README.md) |
+| **Kanban** | Stage-based board with filters, sort, headline metrics, card action bars, and DataTable-parity card field config | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/kanban/README.md) |
+| **Feed** | Activity feed / timeline with a standard item shape, date grouping, load-more pagination, and HubSpot-native item regions | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/feed/README.md) |
+| **Calendar** | Presentational month/week/day/agenda calendar with search, filters, date navigation, event overlays, and experimental Gantt view | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/calendar/README.md) |
+| **Common Components** | Thin visual wrappers and shared collection primitives — `Icon`, `AutoTag`, `AutoStatusTag`, `AvatarStack`, `CrmLookupSelect`, `CollectionToolbar`, `CollectionFilterControl`, `CollectionSortSelect`, `CollectionCount`, and more | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/common-components/README.md) |
 | **CRM data** | `CrmDataTable` / `CrmKanban` — batch-fetching, client-side-paginating CRM table & board, plus the `useCrmSearch*` hooks behind them | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/utils/README.md) |
-| **Utils** | Pure helpers for formatting, options, HubSpot value guards, and tag-variant inference | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/utils/README.md) |
+| **Utils** | Pure helpers for formatting, options, HubSpot value guards, tag-variant inference, collection filtering/searching, and active-filter chips | [Full documentation](https://github.com/05bmckay/hs-uix/blob/main/src/utils/README.md) |
 
 ---
 
@@ -42,7 +52,7 @@ Requires `react` >= 18.0.0 and `@hubspot/ui-extensions` >= 0.12.0 as peer depend
 
 A drop-in table component for HubSpot UI Extensions. Define your columns, pass your data, and you get search, filtering, sorting, pagination, inline editing, row grouping, and auto-sized columns out of the box.
 
-![Full-Featured DataTable](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/fully-featured-table.png)
+![Full-Featured DataTable](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/fully-featured-table.png)
 
 ## Quick Start
 
@@ -95,29 +105,29 @@ That's a searchable, sortable, paginated table with auto-sized columns in 5 line
 
 ### Filters & Footer Totals
 
-![Active Filters](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/fully-featured-table-active-filters.png)
+![Active Filters](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/fully-featured-table-active-filters.png)
 
 ### Row Selection & Bulk Actions
 
-![Row Selection with Action Bar](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/action-bar-per-row-actions.png)
+![Row Selection with Action Bar](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/action-bar-per-row-actions.png)
 
 ### Inline Editing
 
-![Discrete Editing](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/inline-editing-discreet.png)
+![Discrete Editing](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/inline-editing-discreet.png)
 
 Two edit modes: **discrete** (click-to-edit, default) and **inline** (always-visible inputs). Supports `text`, `textarea`, `number`, `currency`, `stepper`, `select`, `multiselect`, `date`, `time`, `datetime`, `toggle`, and `checkbox`.
 
 ### Row Grouping
 
-![Row Grouping](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/row-grouping.png)
+![Row Grouping](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/row-grouping.png)
 
 ### Full-Row Editing
 
-![Full-Row Editing](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/full-row-editing.png)
+![Full-Row Editing](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/full-row-editing.png)
 
 ### useAssociations
 
-![useAssociations + DataTable](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/datatable/assets/useAssociations.png)
+![useAssociations + DataTable](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/datatable/assets/useAssociations.png)
 
 Connect live CRM data (contacts, deals, tickets, etc.) to a DataTable with `useAssociations` from `@hubspot/ui-extensions/crm`.
 
@@ -127,7 +137,7 @@ Connect live CRM data (contacts, deals, tickets, etc.) to a DataTable with `useA
 
 Declarative, config-driven forms for HubSpot UI Extensions. Define fields as data, get a complete form with validation, layout, multi-step wizards, and full HubSpot component integration.
 
-![Basic Form](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/basic-form.png)
+![Basic Form](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/basic-form.png)
 
 ## Quick Start
 
@@ -166,35 +176,35 @@ const fields = [
 
 ### Layout
 
-![Explicit Layout](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/explicit-layout-weighted.png)
+![Explicit Layout](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/explicit-layout-weighted.png)
 
 ### Conditional Visibility & Dependent Properties
 
-![Dependent & Cascading](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/dependent-cascading.gif)
+![Dependent & Cascading](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/dependent-cascading.gif)
 
 ### Async Validation
 
-![Async Validation](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/async-validation-side-effects.png)
+![Async Validation](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/async-validation-side-effects.png)
 
 ### Repeater Fields
 
-![Repeater Fields](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/repeater-fields.png)
+![Repeater Fields](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/repeater-fields.png)
 
 ### Sections & Groups
 
-![Sections & Groups](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/section-and-groups.png)
+![Sections & Groups](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/section-and-groups.png)
 
 ### Custom Field Types
 
-![Custom Field Types](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/custom-field-types.png)
+![Custom Field Types](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/custom-field-types.png)
 
 ### Display Options
 
-![Display Options](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/display-options.png)
+![Display Options](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/display-options.png)
 
 ### Read-Only Mode
 
-![Read-Only Mode](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/form/assets/readonly-autosave-dirty.png)
+![Read-Only Mode](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/form/assets/readonly-autosave-dirty.png)
 
 ---
 
@@ -202,7 +212,7 @@ const fields = [
 
 A stage-based board view that shares DataTable's config vocabulary (`cardFields` ≈ `columns`, filters, sort, selection) so you can offer users a table-or-board toggle without rewriting the data layer. Drag-and-drop isn't available inside HubSpot UI Extensions, so stage changes happen through an inline `Select` (or menu) on each card.
 
-![Kanban — HubSpot Deals preset with metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/kanban/assets/hubspot-deals-preset-with-metrics.png)
+![Kanban — HubSpot Deals preset with metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/kanban/assets/hubspot-deals-preset-with-metrics.png)
 
 ## Quick Start
 
@@ -251,21 +261,21 @@ const CARD_FIELDS = [
 
 ### HubSpot Deals preset
 
-![Kanban — HubSpot Deals preset with metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/kanban/assets/hubspot-deals-preset-with-metrics.png)
+![Kanban — HubSpot Deals preset with metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/kanban/assets/hubspot-deals-preset-with-metrics.png)
 
 Drop-in preset shaped like HubSpot's native deals pipeline: stage-variant headers, per-stage amount totals in the header metric, and an avatar-stack footer row. Hide the summary row with `showMetrics={false}` for dashboards that already surface totals elsewhere.
 
-![Kanban — HubSpot Deals preset without metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/kanban/assets/hubspot-deals-preset-no-metrics.png)
+![Kanban — HubSpot Deals preset without metrics](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/kanban/assets/hubspot-deals-preset-no-metrics.png)
 
 ### Compact lead board
 
-![Kanban — Compact lead board preset](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/kanban/assets/compact-lead-board-preset.png)
+![Kanban — Compact lead board preset](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/kanban/assets/compact-lead-board-preset.png)
 
 `cardDensity="compact"` with trimmed `cardFields` for high-volume boards (leads, tickets, tasks) where you want to fit 8-12 cards per column on a typical viewport without horizontal scrolling.
 
 ### Load-more & stage controls
 
-![Kanban — Select + load more preset](https://raw.githubusercontent.com/05bmckay/hs-uix/main/packages/kanban/assets/select-load-more-preset.png)
+![Kanban — Select + load more preset](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/kanban/assets/select-load-more-preset.png)
 
 Per-stage pagination via an `onLoadMore` handler and `stageMeta.hasMore`, plus inline `Select` stage controls on each card (`stageControl="select"`). Switch to `"menu"` for action-menu style transitions, or `"none"` for read-only boards.
 
@@ -341,7 +351,7 @@ A superset of HubSpot's native `<Icon>`. When the request is natively expressibl
 
 ![CrmLookupSelect live search](https://raw.githubusercontent.com/05bmckay/hs-uix/main/src/common-components/assets/crmLookUp.gif)
 
-Point it at a CRM `objectType` + `properties` and get a debounced, paginated `Select` / `MultiSelect` that searches live as the user types. Picked options stay valid after results change, `loadingOption` shows during the debounce window, and `noResultsOption` only appears once a query settles — no "no results" flash mid-type.
+Point it at a CRM `objectType` + `properties` and get a debounced `Select` / `MultiSelect` that searches the first `pageLength` CRM matches as the user types. Picked options stay valid after results change, `loadingOption` shows during the debounce window, and `noResultsOption` only appears once a query settles — no "no results" flash mid-type. For custom lookup UIs that need native cursor controls, `useCrmSearchOptions` exposes `pagination` / `hasMore`.
 
 ### SectionHeader & KeyValueList
 

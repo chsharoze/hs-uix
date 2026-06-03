@@ -1,1 +1,1 @@
-export * from "./packages/kanban/index";
+export * from "./src/kanban/index";

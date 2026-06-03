@@ -1,226 +1,93 @@
-# @hs-uix Roadmap
+# hs-uix Roadmap
 
-## Packages
+> **One package.** Everything ships as the single [`hs-uix`](https://www.npmjs.com/package/hs-uix)
+> package, imported by subpath. The old scoped `@hs-uix/*` packages
+> (`@hs-uix/datatable`, `@hs-uix/form`, …) are **deprecated** — do not publish or
+> depend on them. The `src/<component>/` folders are internal source modules, not
+> separately published packages.
 
-| Package | Status | npm | Description |
+```js
+import { DataTable }   from "hs-uix/datatable";
+import { FormBuilder } from "hs-uix/form";
+import { Kanban }      from "hs-uix/kanban";
+import { Feed }        from "hs-uix/feed";
+import { Calendar }    from "hs-uix/calendar";
+// shared building blocks
+import { Icon }        from "hs-uix/common-components";
+import { CrmDataTable } from "hs-uix/utils";
+```
+
+## Components
+
+| Component | Subpath | Status | Summary |
 |---|---|---|---|
-| `@hs-uix/datatable` | v0.4.0 published | [npm](https://www.npmjs.com/package/@hs-uix/datatable) | Filterable, sortable, paginated tables |
-| `@hs-uix/form` | v0.1.0 published | [npm](https://www.npmjs.com/package/@hs-uix/form) | Declarative config-driven forms |
-| `@hs-uix/kanban` | planned | — | Drag-free kanban board |
-| `@hs-uix/feed` | planned | — | Activity feed / timeline |
+| DataTable | `hs-uix/datatable` | Shipped | Filterable, sortable, paginated tables; inline edit; row selection; client & server modes |
+| FormBuilder | `hs-uix/form` | Shipped | Declarative config-driven forms; validation; multi-step; repeaters; CRM helpers |
+| Kanban | `hs-uix/kanban` | Shipped | Drag-free board; stage transitions; metrics; filters; server-side mode |
+| Feed | `hs-uix/feed` | Shipped | Activity feed / timeline; grouping; search/filters; load-more |
+| Calendar | `hs-uix/calendar` | Shipped | Month / Week / Day / Agenda views (+ experimental Gantt); overlays; search/filters |
+
+Shared internals: `hs-uix/common-components` (Icon, AvatarStack, CollectionToolbar,
+StatusTag helpers, SVG/data-URI builders) and `hs-uix/utils` (CRM search adapters,
+query/filter helpers, formatters, `CrmDataTable` / `CrmKanban`).
 
 ---
 
-## @hs-uix/form
+## Future ideas
 
-### v0.1.0 — Core (shipped)
+These are candidate enhancements, not commitments. Each lands as a minor bump to
+the single `hs-uix` package.
 
-- 16 field types mapping to HubSpot components
-- Controlled/uncontrolled state management
-- Validation engine (required, pattern, minLength/maxLength, min/max, custom)
-- Validation timing (onInput, onBlur, onSubmit)
-- Multi-step wizard with StepIndicator + per-step validation
-- Ref API (submit, validate, reset, getValues, isDirty, setFieldValue, setFieldError)
-- Dirty tracking
-- Conditional visibility (`visible` predicate)
-- Dependent properties (Tile grouping with demibold header + info tooltip)
-- Cascading options (`options` as function)
-- Half-width layout (`width: "half"`)
-- Custom render escape hatch
-- Configurable Form wrapper (`noFormWrapper`)
-- Loading state with LoadingButton
-- TypeScript definitions
-
-### v0.1.1 — QA & Bug Fixes
-
-Test the deployed demo against real HubSpot and fix issues:
-
-- [ ] Verify all 16 field types render correctly
-- [ ] Test validation timing — blur fires, submit blocks, validateOnChange works
-- [ ] Test multi-step — StepIndicator renders, per-step validation blocks Next, Back preserves values
-- [ ] Test dependent properties — Tile appears/disappears, tooltip renders, multiple dependents group
-- [ ] Test cascading options — sub-category updates when parent changes
-- [ ] Test ref API — external submit validates, reset clears, isDirty tracks
-- [ ] Test half-width pairing — side-by-side rendering, odd count graceful
-- [ ] Test controlled mode — bidirectional values + onChange
-- [ ] Test edge cases — empty fields array, single field, all hidden, step with no visible fields
-- [ ] Fix HubSpot component prop mismatches (readOnly vs readonly, event signatures, etc.)
-
-### v0.2.0 — Polish
-
-- [ ] **Field groups with Dividers** — group related fields with a Divider + optional group label
-  ```jsx
-  fields={[
-    { name: "name", type: "text", label: "Name", group: "Contact Info" },
-    { name: "email", type: "text", label: "Email", group: "Contact Info" },
-    // Divider auto-inserted between groups
-    { name: "company", type: "text", label: "Company", group: "Company Info" },
-  ]}
-  ```
-
-- [ ] **Repeater fields** — add/remove rows for dynamic lists
-  ```jsx
-  { name: "phones", type: "repeater", label: "Phone Numbers",
-    fields: [
-      { name: "number", type: "text", label: "Number" },
-      { name: "type", type: "select", label: "Type", options: PHONE_TYPES },
-    ],
-    min: 1, max: 5 }
-  ```
-
-- [ ] **Async validation** — `validate` returns a Promise
-  ```jsx
-  { name: "email", validate: async (v) => {
-    const exists = await checkEmailExists(v);
-    return exists ? "Email already in use" : true;
-  }}
-  ```
-
-- [ ] **Field-level loading** — spinner on individual fields while fetching options
-  ```jsx
-  { name: "assignee", type: "select", label: "Assignee",
-    loading: true, options: teamMembers }
-  ```
-
-- [ ] **onSubmitSuccess / onSubmitError** — post-submit UX callbacks
-  ```jsx
-  <FormBuilder
-    onSubmit={saveRecord}
-    onSubmitSuccess={() => actions.addAlert({ type: "success", message: "Saved!" })}
-    onSubmitError={(err) => actions.addAlert({ type: "danger", message: err.message })}
-  />
-  ```
-
-- [ ] **Warn on dirty close** — confirmation when navigating away from unsaved changes
-
-### v0.3.0 — CRM Integration
-
-- [ ] **Server-side validation mapping** — map API error responses to field errors
-  ```jsx
-  try { await saveRecord(values); }
-  catch (err) { formRef.current.setErrors(err.errors); }
-  ```
-
-- [ ] **Prefill from CRM properties** — helper to map property values to form values
-  ```jsx
-  import { useFormPrefill } from "@hs-uix/form";
-  const initialValues = useFormPrefill(properties, {
-    firstName: "firstname",
-    lastName: "lastname",
-  });
-  ```
-
-- [ ] **Schema from HubSpot properties** — generate field definitions from CRM property definitions
-  ```jsx
-  import { fieldsFromProperties } from "@hs-uix/form";
-  const fields = fieldsFromProperties(propertyDefs, {
-    include: ["firstname", "lastname", "email", "lifecyclestage"],
-  });
-  ```
-
-- [ ] **Autosave** — debounced auto-save on change
-  ```jsx
-  <FormBuilder autoSave={{ debounce: 1000, onAutoSave: saveDraft }} />
-  ```
-
-### v0.4.0 — Docs & README
-
-- [ ] Full README.md with examples (quick start, field types, validation, multi-step, ref API, panel integration)
-- [ ] Update DataTable README for @hs-uix/datatable rename
-- [ ] Root monorepo README linking to each package
-
----
-
-## @hs-uix/datatable
-
-### v0.4.0 (current — shipped as @hs-uix/datatable)
-
-Migrated from `hubspot-datatable`. Full feature set:
-- Client-side and server-side modes
-- Search (fuzzy with fuse.js)
-- Filters (select, multiselect, dateRange)
-- Sorting, pagination, grouping
-- Row selection with bulk actions
-- Inline editing (text, select, currency, datetime, toggle, checkbox)
-- Auto-width column sizing
-- Scrollable mode
-
-### v0.5.0 — Planned
-
-- [ ] Column resizing
-- [ ] Column reordering
+### DataTable
+- [ ] Column resizing & reordering
 - [ ] Export to CSV
 - [ ] Row expansion (detail row)
 
----
+### FormBuilder
+- [ ] Warn on dirty close (unsaved-changes confirmation)
+- [ ] Field-level loading spinners while fetching options
+- [ ] Schema generation from HubSpot property definitions
 
-## @hs-uix/kanban — Planned
+### Kanban
+- [ ] WIP limits per stage
+- [ ] Swimlanes (group rows by a second dimension)
 
-Drag-free kanban board for HubSpot UI Extensions (no drag-and-drop API available).
+### Feed
+- [ ] Real-time append (prepend new items without full reload)
+- [ ] Per-type icon/color presets
 
-Likely approach:
-- Columns rendered as vertical lists
-- Move cards between columns via dropdown or button actions
-- Column headers with counts and collapse
-- Card customization via render props
-- Filtering and search across cards
-
----
-
-## @hs-uix/feed — Planned
-
-Activity feed / timeline component for HubSpot UI Extensions.
-
-Likely approach:
-- Chronological list of activity items
-- Configurable item rendering (icons, timestamps, descriptions)
-- Infinite scroll / load more pagination
-- Filtering by activity type
-- Grouping by date (Today, Yesterday, Last Week, etc.)
+### Calendar
+- [ ] Resource/lane view (rows = owners/resources)
+- [ ] Drag-free reschedule via per-event action menu
+- [ ] Promote Gantt out of experimental
 
 ---
 
-## Infrastructure
-
-### Monorepo
+## Repo layout
 
 ```
 hs-uix/
-├── package.json              ← npm workspaces root
-├── packages/
-│   ├── datatable/            ← @hs-uix/datatable
-│   ├── form/                 ← @hs-uix/form
-│   └── datatable-compat/     ← hubspot-datatable (deprecation bridge)
+├── package.json            ← the only published package (subpath exports)
+├── index.d.ts              ← root barrel: re-exports every component + shared types
+├── <component>.d.ts        ← per-subpath type entry (export * from ./src/<comp>/index)
+├── tsup.config.js          ← one entry per subpath
+└── src/
+    ├── index.js            ← root barrel (mirrors index.d.ts)
+    ├── datatable/          ← DataTable source, tests, README, index.d.ts
+    ├── form/
+    ├── kanban/
+    ├── feed/
+    ├── calendar/
+    ├── common-components/  ← shared Icon / Collection* / SVG primitives
+    └── utils/              ← CRM adapters, query helpers, formatters
 ```
 
-### Demo App (separate repo)
-
-```
-hs-uix-demos/
-├── src/app/cards/
-│   ├── DemoApp.jsx           ← Tabs: DataTable | FormBuilder | Kanban | Feed
-│   └── package.json
-```
-
-### Publishing
+## Build, test, release
 
 ```bash
-# From monorepo root
-cd packages/datatable && npm publish --access public --otp=CODE
-cd packages/form && npm publish --access public --otp=CODE
-```
+npm run build     # tsup → dist/ (esm + cjs per subpath)
+npm test          # vitest (src/**/*.test.{js,jsx})
 
-### Local Dev
-
-```bash
-# Terminal 1 — watch all packages
-cd ~/Desktop/hs-uix && npm run dev
-
-# Terminal 2 — run demo
-cd ~/Desktop/hs-uix-demos && hs project dev
-
-# Link setup (one-time after npm install)
-cd ~/Desktop/hs-uix/packages/datatable && npm link
-cd ~/Desktop/hs-uix/packages/form && npm link
-cd ~/Desktop/hs-uix-demos/src/app/cards && npm link @hs-uix/datatable @hs-uix/form
+# release the single package (from repo root)
+npm run release:patch   # or release:minor / release:major
 ```

@@ -9,9 +9,10 @@ import Fuse from "fuse.js";
 // so the rules of "what each filter type means" and "how search matches" live
 // once and are unit-testable without mounting a 1,800-line component.
 //
-// NOTE: Feed.jsx deliberately does NOT use this module. Feed filters with a
-// path-based `getValue()` accessor and string-coercing equality; merging it in
-// would change Feed's behavior. Its pipeline stays in Feed.jsx on purpose.
+// NOTE: Feed.jsx uses the generic chip/reset helpers here, but deliberately
+// keeps its own filtering pipeline because it relies on path-based `getValue()`
+// accessors and string-coercing equality. Merging that pipeline would change
+// Feed behavior.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** The "no selection" value for a filter, by control type. */
@@ -19,6 +20,7 @@ export const getEmptyFilterValue = (filter) => {
   const type = filter.type || "select";
   if (type === "multiselect") return [];
   if (type === "dateRange") return { from: null, to: null };
+  if (Object.prototype.hasOwnProperty.call(filter, "emptyValue")) return filter.emptyValue;
   return "";
 };
 
@@ -27,6 +29,8 @@ export const isFilterActive = (filter, value) => {
   const type = filter.type || "select";
   if (type === "multiselect") return Array.isArray(value) && value.length > 0;
   if (type === "dateRange") return value && (value.from || value.to);
+  if (value == null) return false;
+  if (Object.prototype.hasOwnProperty.call(filter, "emptyValue")) return value !== filter.emptyValue;
   return !!value;
 };
 
@@ -43,6 +47,62 @@ export const formatDateChip = (dateObj) => {
 export const dateToTimestamp = (dateObj) => {
   if (!dateObj) return null;
   return new Date(dateObj.year, dateObj.month, dateObj.date).getTime();
+};
+
+/** Build an object of empty values for every filter in a config list. */
+export const getEmptyFilterValues = (filters, options = {}) => {
+  const out = {};
+  for (const filter of filters || []) {
+    out[filter.name] = typeof options.getEmptyValue === "function"
+      ? options.getEmptyValue(filter)
+      : getEmptyFilterValue(filter);
+  }
+  return out;
+};
+
+/** Return a new filter-values object with one filter, or all filters, reset. */
+export const resetFilterValues = (filters, values = {}, key = "all", options = {}) => {
+  if (key === "all") return getEmptyFilterValues(filters, options);
+  const filter = (filters || []).find((item) => item.name === key);
+  const emptyValue = filter
+    ? (typeof options.getEmptyValue === "function" ? options.getEmptyValue(filter) : getEmptyFilterValue(filter))
+    : (options.fallbackEmptyValue ?? "");
+  return { ...(values || {}), [key]: emptyValue };
+};
+
+const findOptionLabel = (filter, value) =>
+  (filter.options || []).find((option) => option.value === value)?.label || value;
+
+/** Build standard active-filter chip descriptors from filter config + values. */
+export const buildActiveFilterChips = (filters, values = {}, options = {}) => {
+  const chips = [];
+  const isActive = options.isFilterActive || isFilterActive;
+  const dateFormatter = options.formatDate || formatDateChip;
+  const dateJoiner = options.dateJoiner ?? " ";
+
+  for (const filter of filters || []) {
+    const value = values?.[filter.name];
+    if (!isActive(filter, value)) continue;
+
+    const type = filter.type || "select";
+    const prefix = filter.chipLabel || filter.placeholder || filter.label || filter.name;
+
+    if (type === "multiselect") {
+      const labels = (Array.isArray(value) ? value : [])
+        .map((item) => findOptionLabel(filter, item))
+        .join(", ");
+      chips.push({ key: filter.name, label: `${prefix}: ${labels}` });
+    } else if (type === "dateRange") {
+      const parts = [];
+      if (value?.from) parts.push(`${options.dateFromPrefix ?? "from "}${dateFormatter(value.from)}`);
+      if (value?.to) parts.push(`${options.dateToPrefix ?? "to "}${dateFormatter(value.to)}`);
+      chips.push({ key: filter.name, label: `${prefix}: ${parts.join(dateJoiner)}` });
+    } else {
+      chips.push({ key: filter.name, label: `${prefix}: ${findOptionLabel(filter, value)}` });
+    }
+  }
+
+  return chips;
 };
 
 /** Stable string fingerprint of a value (used to detect query changes). */
@@ -63,7 +123,7 @@ export const toStableKey = (value) => {
  * @param {Array<object>} filters   filter configs ({ name, type, filterFn })
  * @param {Record<string, any>} values  current value per filter name
  */
-export const filterRows = (rows, filters, values) => {
+export const filterRows = (rows, filters, values = {}) => {
   let result = rows;
 
   for (const filter of filters || []) {

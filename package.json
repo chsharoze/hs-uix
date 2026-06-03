@@ -32,6 +32,11 @@
       "import": "./dist/feed.mjs",
       "require": "./dist/feed.js"
     },
+    "./calendar": {
+      "types": "./calendar.d.ts",
+      "import": "./dist/calendar.mjs",
+      "require": "./dist/calendar.js"
+    },
     "./common-components": {
       "types": "./common-components.d.ts",
       "import": "./dist/common-components.mjs",
@@ -50,18 +55,17 @@
     "form.d.ts",
     "kanban.d.ts",
     "feed.d.ts",
+    "calendar.d.ts",
     "common-components.d.ts",
     "utils.d.ts",
-    "packages/*/index.d.ts",
-    "packages/*/README.md",
+    "src/**/*.d.ts",
     "README.md"
-  ],
-  "workspaces": [
-    "packages/*"
   ],
   "scripts": {
     "build": "tsup",
     "build:icons": "node scripts/build-icons.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev": "tsup --watch",
     "link:demos": "npm link && cd ../hs-uix-demos/src/app/pages && npm link hs-uix",
     "pack:demos": "node scripts/pack-demos.mjs",
